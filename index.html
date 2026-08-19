@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Attendance System - High Accuracy & Single Page</title>
+    <title>AI Attendance System - High Accuracy & Large Viewport</title>
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -40,88 +40,88 @@
         
         /* Auth Overlay Page */
         .auth-screen { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; z-index: 2000; padding: 20px; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
-        .auth-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 36px 28px; border-radius: var(--radius-lg); width: 100%; max-width: 400px; text-align: center; box-shadow: var(--shadow-lg); }
-        .auth-card h1 { font-size: 24px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
-        .auth-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.4; }
+        .auth-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 36px 28px; border-radius: var(--radius-lg); width: 100%; max-width: 420px; text-align: center; box-shadow: var(--shadow-lg); }
+        .auth-card h1 { font-size: 26px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+        .auth-card p { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.4; }
         .auth-btn-group { display: flex; flex-direction: column; gap: 12px; }
         
-        .btn-portal { width: 100%; padding: 12px 16px; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        .btn-portal { width: 100%; padding: 12px 16px; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 10px; }
         .btn-portal-google { background: #ffffff; color: var(--text-main); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }
         .btn-portal-google:hover { background: #f8fafc; }
         .btn-portal-admin { background: var(--primary); color: #fff; }
         .btn-portal-admin:hover { background: var(--primary-hover); }
 
         /* Main Dashboard Structure */
-        .dashboard { display: none; width: 100%; max-width: 1400px; margin: 0 auto; height: 100vh; padding: 12px; flex-direction: column; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: var(--card-bg); padding: 10px 16px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); flex-shrink: 0; }
-        .header h2 { font-size: 16px; font-weight: 700; color: var(--text-main); }
-        .header small { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+        .dashboard { display: none; width: 100%; max-width: 1440px; margin: 0 auto; height: 100vh; padding: 12px; flex-direction: column; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: var(--card-bg); padding: 10px 18px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); flex-shrink: 0; }
+        .header h2 { font-size: 18px; font-weight: 700; color: var(--text-main); }
+        .header small { font-size: 12px; color: var(--text-muted); font-weight: 500; }
         
-        .user-box { display: flex; align-items: center; gap: 8px; }
-        .user-avatar { width: 28px; height: 28px; border-radius: 50%; display: none; border: 2px solid var(--primary); }
+        .user-box { display: flex; align-items: center; gap: 10px; }
+        .user-avatar { width: 32px; height: 32px; border-radius: 50%; display: none; border: 2px solid var(--primary); }
         
         /* Stats Metric Cards */
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px; flex-shrink: 0; }
-        .stat-card { background: var(--card-bg); border-radius: var(--radius-md); padding: 8px 14px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }
-        .stat-card span { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
-        .stat-card h4 { font-size: 16px; font-weight: 700; color: var(--text-main); margin-top: 1px; }
+        .stat-card { background: var(--card-bg); border-radius: var(--radius-md); padding: 10px 16px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }
+        .stat-card span { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-card h4 { font-size: 20px; font-weight: 700; color: var(--text-main); margin-top: 1px; }
 
         /* Workspace Layout */
-        .main-container { display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px; flex: 1; min-height: 0; }
+        .main-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; min-height: 0; }
         @media (max-width: 992px) { .main-container { grid-template-columns: 1fr; overflow-y: auto; } }
         
-        .card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 12px 16px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; min-height: 0; }
+        .card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 14px 18px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; min-height: 0; }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
-        .card-header h3 { font-size: 13px; font-weight: 600; color: var(--text-main); }
+        .card-header h3 { font-size: 15px; font-weight: 700; color: var(--text-main); }
         
-        /* Camera UI Container + Canvas Layer */
-        .video-wrapper { position: relative; width: 100%; flex: 1; min-height: 180px; max-height: 220px; background: #090d16; border-radius: var(--radius-md); overflow: hidden; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border-color); }
+        /* Expanded Camera UI Container */
+        .video-wrapper { position: relative; width: 100%; flex: 1; min-height: 280px; background: #090d16; border-radius: var(--radius-md); overflow: hidden; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border-color); }
         video { width: 100%; height: 100%; object-fit: cover; }
         canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
         
-        .controls { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; flex-shrink: 0; }
-        button { padding: 8px; border: none; border-radius: var(--radius-md); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: inline-flex; justify-content: center; align-items: center; gap: 6px; }
+        .controls { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; flex-shrink: 0; }
+        button { padding: 11px; border: none; border-radius: var(--radius-md); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: inline-flex; justify-content: center; align-items: center; gap: 6px; }
         button:hover:not(:disabled) { filter: brightness(1.05); }
         
         .btn-start { background: var(--success); color: #fff; }
         .btn-reg { background: var(--info); color: #fff; }
         .btn-scan { background: var(--primary); color: #fff; }
         .btn-stop { background: var(--danger); color: #fff; }
-        .btn-manage { background: #f1f5f9; color: var(--text-main); border: 1px solid var(--border-color); font-size: 11px; padding: 5px 10px; }
-        .btn-google { background: var(--danger); color: #fff; font-size: 11px; padding: 5px 10px; }
+        .btn-manage { background: #f1f5f9; color: var(--text-main); border: 1px solid var(--border-color); font-size: 12px; padding: 6px 12px; }
+        .btn-google { background: var(--danger); color: #fff; font-size: 12px; padding: 6px 12px; }
         button:disabled { background: #e2e8f0 !important; color: #94a3b8 !important; cursor: not-allowed; }
         
         /* Dynamic Status Notification Box */
-        .status-box { margin-top: 8px; padding: 8px; border-radius: var(--radius-md); font-weight: 600; font-size: 11px; text-align: center; flex-shrink: 0; }
+        .status-box { margin-top: 8px; padding: 10px; border-radius: var(--radius-md); font-weight: 600; font-size: 13px; text-align: center; flex-shrink: 0; }
         .status-idle { background: #f1f5f9; color: var(--text-muted); }
         .status-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
         .status-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
         .status-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 
-        /* Tables UI - Internal scroll wrapper */
+        /* Larger Text Tables UI - Internal Scroll */
         .table-container { flex: 1; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); min-height: 0; }
         table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        th, td { text-align: left; padding: 8px 10px; font-size: 11px; }
-        th { background: #f8fafc; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 10; }
+        th, td { text-align: left; padding: 11px 14px; font-size: 13px; }
+        th { background: #f8fafc; color: var(--text-muted); font-weight: 700; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 10; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
         td { border-bottom: 1px solid var(--border-color); color: var(--text-main); }
         tbody tr:hover td { background: #f8fafc; }
 
-        .badge { padding: 2px 6px; border-radius: 20px; font-size: 9px; font-weight: 600; display: inline-block; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-block; }
         .badge-present { background: #d1fae5; color: #065f46; }
         .badge-unknown { background: #fee2e2; color: #991b1b; }
 
-        tr.date-separator td { border-top: 6px solid var(--bg-main); padding-top: 8px; }
+        tr.date-separator td { border-top: 6px solid var(--bg-main); padding-top: 10px; }
 
         /* Modal Overlay */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: var(--card-bg); padding: 20px; border-radius: var(--radius-lg); width: 90%; max-width: 520px; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--border-color); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); }
-        .modal-header h3 { font-size: 15px; font-weight: 700; color: var(--text-main); }
-        .btn-close { background: transparent; border: none; font-size: 18px; font-weight: bold; cursor: pointer; color: var(--text-muted); }
-        .btn-delete { background: var(--danger); color: #fff; padding: 4px 8px; font-size: 10px; border-radius: 6px; border: none; cursor: pointer; }
-        .modal-section { margin-bottom: 14px; }
-        .modal-section h4 { font-size: 11px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); text-transform: uppercase; }
-        .danger-zone { border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px; }
+        .modal-content { background: var(--card-bg); padding: 22px; border-radius: var(--radius-lg); width: 90%; max-width: 560px; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--border-color); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
+        .modal-header h3 { font-size: 17px; font-weight: 700; color: var(--text-main); }
+        .btn-close { background: transparent; border: none; font-size: 20px; font-weight: bold; cursor: pointer; color: var(--text-muted); }
+        .btn-delete { background: var(--danger); color: #fff; padding: 6px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; }
+        .modal-section { margin-bottom: 16px; }
+        .modal-section h4 { font-size: 12px; font-weight: 700; margin-bottom: 8px; color: var(--text-muted); text-transform: uppercase; }
+        .danger-zone { border-top: 1px solid var(--border-color); padding-top: 14px; margin-top: 14px; }
     </style>
 </head>
 <body>
@@ -133,7 +133,7 @@
             <p>Select an authentication method below to open your cloud database.</p>
             <div class="auth-btn-group">
                 <button class="btn-portal btn-portal-google" onclick="handleGoogleAuth()">
-                    <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
                     Sign In with Google
                 </button>
                 <button class="btn-portal btn-portal-admin" onclick="handleAdminAuth()">
@@ -152,7 +152,7 @@
             </div>
             <div class="user-box">
                 <img id="user-photo" class="user-avatar" src="" alt="User Avatar">
-                <span id="user-email" style="font-size: 11px; font-weight: 600; color: var(--text-main);">Not Signed In</span>
+                <span id="user-email" style="font-size: 13px; font-weight: 600; color: var(--text-main);">Not Signed In</span>
                 <button class="btn-manage" onclick="openManageModal()">Manage Data</button>
                 <button id="btn-auth" class="btn-google" onclick="signOut()">Sign Out</button>
             </div>
@@ -170,7 +170,7 @@
             </div>
             <div class="stat-card">
                 <span>Detection Engine</span>
-                <h4 style="font-size: 12px; margin-top: 2px; color: var(--primary);">SSD MobileNetV1</h4>
+                <h4 style="font-size: 14px; margin-top: 2px; color: var(--primary);">SSD MobileNetV1</h4>
             </div>
         </div>
 
@@ -196,7 +196,7 @@
                 </div>
             </div>
 
-            <!-- Right Column: Cloud Records (with internal scroll) -->
+            <!-- Right Column: Cloud Records -->
             <div class="card">
                 <div class="card-header">
                     <h3>Attendance Logs</h3>
@@ -230,7 +230,7 @@
             
             <div class="modal-section">
                 <h4>Registered Students</h4>
-                <div class="table-container" style="max-height: 180px;">
+                <div class="table-container" style="max-height: 200px;">
                     <table>
                         <thead>
                             <tr>
@@ -303,13 +303,10 @@
         let unsubscribeLogs = null;
         let overlayCanvas = null;
         
-        // High-Precision Face Detection Model Base URL
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
 
-        // Load Enhanced Face Detection Models
         window.addEventListener('DOMContentLoaded', async () => {
             try {
-                // Upgraded from TinyFaceDetector to SsdMobilenetv1 for enhanced recognition accuracy
                 await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
@@ -320,7 +317,6 @@
             }
         });
 
-        // 1. Google Auth Function
         function handleGoogleAuth() {
             auth.signInWithPopup(googleProvider)
                 .catch((error) => {
@@ -333,7 +329,6 @@
                 });
         }
 
-        // 2. Admin Auth Function
         async function handleAdminAuth() {
             const adminPassword = "krm#project";
             const input = prompt("Enter Admin Passcode:");
@@ -349,7 +344,6 @@
             }
         }
 
-        // 3. Sign Out Function
         function signOut() {
             if (unsubscribeLogs) unsubscribeLogs();
             if (auth.currentUser) {
@@ -363,7 +357,6 @@
             authScreen.style.display = 'flex';
         }
 
-        // Firebase Auth State Observer
         auth.onAuthStateChanged(async (user) => {
             if (user) {
                 currentUser = user;
@@ -387,7 +380,6 @@
             }
         });
 
-        // Load Face Vectors
         async function loadStudentsFromDatabase() {
             if (!currentUser) return;
             try {
@@ -411,7 +403,6 @@
             }
         }
 
-        // Realtime Log Observer
         function listenToAttendanceLogs() {
             if (!currentUser) return;
             if (unsubscribeLogs) unsubscribeLogs();
@@ -445,7 +436,6 @@
               });
         }
 
-        /* --- Data Management Modal --- */
         async function openManageModal() {
             manageModal.style.display = 'flex';
             await refreshManageTable();
@@ -460,7 +450,7 @@
             manageStudentsTable.innerHTML = "";
             
             if (registeredStudents.length === 0) {
-                manageStudentsTable.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-muted); font-size: 11px; padding: 15px;">No registered students found.</td></tr>`;
+                manageStudentsTable.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 15px;">No registered students found.</td></tr>`;
                 return;
             }
 
@@ -539,9 +529,7 @@
             }
         }
 
-        /* --- Optimized Detection Core --- */
         async function getFaceDescriptor() {
-            // Uses SSD MobileNet for accurate recognition bounding
             const detection = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
                 .withFaceLandmarks()
                 .withFaceDescriptor();
@@ -629,7 +617,6 @@
             let bestMatch = null;
             let lowestDistance = 1.0;
 
-            // Compute Euclidean distance against saved descriptors
             registeredStudents.forEach(student => {
                 const distance = faceapi.euclideanDistance(detection.descriptor, student.descriptor);
                 if (distance < lowestDistance) {
@@ -638,7 +625,6 @@
                 }
             });
 
-            // Threshold set to 0.45 for strict image recognition match validation
             if (lowestDistance <= 0.45) {
                 const confidence = Math.round((1 - lowestDistance) * 100);
                 updateStatus(`Identified: ${bestMatch.name} (${confidence}% Match)`, "status-success");
@@ -674,11 +660,10 @@
             }
         }
 
-        // Camera Logic
         async function startCamera() {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } 
+                    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" } 
                 });
                 video.srcObject = stream;
                 updateStatus("Camera active. Ready for scanning.", "status-idle");
