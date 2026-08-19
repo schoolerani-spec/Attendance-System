@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Attendance System - Clean Interface</title>
+    <title>Real AI Attendance System - Facial Embeddings</title>
+    <!-- Load TensorFlow & Face-API from CDN -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4f6f9; color: #333; padding: 20px; }
@@ -14,9 +16,10 @@
         .video-wrapper { position: relative; width: 100%; height: 320px; background: #000; border-radius: 6px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
         video { width: 100%; height: 100%; object-fit: cover; }
         
-        .controls { display: flex; gap: 10px; margin-top: 15px; }
-        button { flex: 1; padding: 10px; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+        button { flex: 1; min-width: 120px; padding: 10px; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-start { background: #28a745; color: #fff; }
+        .btn-reg { background: #17a2b8; color: #fff; }
         .btn-scan { background: #007bff; color: #fff; }
         .btn-stop { background: #dc3545; color: #fff; }
         button:disabled { background: #cccccc; cursor: not-allowed; }
@@ -38,8 +41,8 @@
 <body>
 
     <div class="header">
-        <h2>AI Attendance Dashboard</h2>
-        <span id="session-status">Status: <strong>Offline</strong></span>
+        <h2>Real AI Facial Recognition Attendance</h2>
+        <span id="model-status">AI Status: <strong>Loading Neural Models...</strong></span>
     </div>
 
     <div class="main-container">
@@ -50,23 +53,27 @@
             </div>
             
             <div class="controls">
-                <button class="btn-start" id="btn-start" onclick="startCamera()">Start Camera</button>
-                <button class="btn-scan" id="btn-scan" onclick="scanFace()" disabled>Scan / Mark Face</button>
-                <button class="btn-stop" id="btn-stop" onclick="stopCamera()" disabled>Stop Session</button>
+                <button class="btn-start" id="btn-start" onclick="startCamera()" disabled>Start Camera</button>
+                <button class="btn-reg" id="btn-reg" onclick="registerFace()" disabled>1. Register Face</button>
+                <button class="btn-scan" id="btn-scan" onclick="scanFace()" disabled>2. Scan Attendance</button>
+                <button class="btn-stop" id="btn-stop" onclick="stopCamera()" disabled>Stop</button>
             </div>
 
             <div id="status-message" class="status-box status-idle">
-                Click "Start Camera" to turn on the video feed.
+                Please wait while deep learning models load...
             </div>
         </div>
 
         <div class="card">
-            <h3>Live Attendance Log</h3>
+            <h3>Registered Profiles & Attendance Log</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                Registered in Memory: <span id="registered-count">0</span> student(s)
+            </p>
             <table>
                 <thead>
                     <tr>
-                        <th>Student ID</th>
                         <th>Name</th>
+                        <th>Match Confidence</th>
                         <th>Time</th>
                         <th>Status</th>
                     </tr>
@@ -80,27 +87,51 @@
     <script>
         const video = document.getElementById('webcam');
         const statusMessage = document.getElementById('status-message');
-        const sessionStatus = document.getElementById('session-status');
+        const modelStatus = document.getElementById('model-status');
         const logTable = document.getElementById('log-table-body');
+        const registeredCount = document.getElementById('registered-count');
         
         const btnStart = document.getElementById('btn-start');
+        const btnReg = document.getElementById('btn-reg');
         const btnScan = document.getElementById('btn-scan');
         const btnStop = document.getElementById('btn-stop');
         
         let stream = null;
+        const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
+        
+        // Database of registered face vectors in local memory
+        // Format: { name: "Alex", descriptor: Float32Array(128) }
+        const registeredStudents = [];
+
+        // Load Real Neural Network Models from CDN
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                
+                modelStatus.innerHTML = "AI Status: <strong style='color: green;'>Models Ready</strong>";
+                updateStatus("AI models loaded! Click 'Start Camera' to begin.", "status-idle");
+                btnStart.disabled = false;
+            } catch (err) {
+                console.error(err);
+                modelStatus.innerHTML = "AI Status: <strong style='color: red;'>Loading Failed</strong>";
+                updateStatus("Failed to load neural models from CDN.", "status-danger");
+            }
+        });
 
         async function startCamera() {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = stream;
-                sessionStatus.innerHTML = "Status: <strong style='color: green;'>Active</strong>";
-                updateStatus("Camera active. Click 'Scan / Mark Face' to log attendance.", "status-idle");
+                updateStatus("Camera active. Position face and click 'Register Face' or 'Scan Attendance'.", "status-idle");
                 
                 btnStart.disabled = true;
+                btnReg.disabled = false;
                 btnScan.disabled = false;
                 btnStop.disabled = false;
             } catch (err) {
-                updateStatus("Error: Camera access failed.", "status-danger");
+                updateStatus("Error: Camera access denied.", "status-danger");
             }
         }
 
@@ -109,10 +140,9 @@
                 stream.getTracks().forEach(track => track.stop());
                 video.srcObject = null;
             }
-            sessionStatus.innerHTML = "Status: <strong>Offline</strong>";
-            updateStatus("Session stopped.", "status-idle");
-            
+            updateStatus("Camera stopped.", "status-idle");
             btnStart.disabled = false;
+            btnReg.disabled = true;
             btnScan.disabled = true;
             btnStop.disabled = true;
         }
@@ -122,37 +152,83 @@
             statusMessage.className = `status-box ${className}`;
         }
 
-        function scanFace() {
-            if (!stream) return;
+        // Extract 128D Facial Embedding Vector directly from live video frame
+        async function getFaceDescriptor() {
+            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+                .withFaceLandmarks()
+                .withFaceDescriptor();
+            return detection;
+        }
 
-            const scenarios = [
-                { type: 'known', name: 'Alex Johnson', id: 'STU-101' },
-                { type: 'known', name: 'Maria Garcia', id: 'STU-102' },
-                { type: 'unknown', name: 'Unknown Face', id: 'N/A' },
-                { type: 'blurred', name: '', id: '' }
-            ];
+        // STEP 1: Save actual facial features into memory
+        async function registerFace() {
+            updateStatus("Extracting facial features for registration...", "status-idle");
+            const detection = await getFaceDescriptor();
 
-            const result = scenarios[Math.floor(Math.random() * scenarios.length)];
-            
-            if (result.type === 'blurred') {
-                updateStatus("Face unclear. Please align with camera and scan again.", "status-warning");
-            } else {
-                if (result.type === 'known') {
-                    updateStatus(`Identified: ${result.name}`, "status-success");
-                    addLogEntry(result.id, result.name, 'Present', 'badge-present');
-                } else {
-                    updateStatus("Student not recognised.", "status-danger");
-                    addLogEntry('N/A', 'Unknown', 'Rejected', 'badge-unknown');
+            if (!detection) {
+                updateStatus("Face unclear or not detected. Adjust lighting/position.", "status-warning");
+                return;
+            }
+
+            const studentName = prompt("Enter Student Name to Register:", "Alex Johnson");
+            if (!studentName) return;
+
+            // Save the unique 128-float embedding vector
+            registeredStudents.push({
+                name: studentName,
+                descriptor: detection.descriptor
+            });
+
+            registeredCount.textContent = registeredStudents.length;
+            updateStatus(`Successfully registered facial profile for "${studentName}"!`, "status-success");
+        }
+
+        // STEP 2: Real AI Scan & Distance Comparison
+        async function scanFace() {
+            if (registeredStudents.length === 0) {
+                updateStatus("No students registered yet! Click 'Register Face' first.", "status-warning");
+                return;
+            }
+
+            updateStatus("Analyzing face vector against database...", "status-idle");
+            const detection = await getFaceDescriptor();
+
+            if (!detection) {
+                updateStatus("Face unclear or no face detected in camera.", "status-warning");
+                return;
+            }
+
+            const currentDescriptor = detection.descriptor;
+            let bestMatch = null;
+            let lowestDistance = 1.0; // Euclidean Distance Threshold
+
+            // Compare current face embedding vector to all registered embeddings
+            registeredStudents.forEach(student => {
+                const distance = faceapi.euclideanDistance(currentDescriptor, student.descriptor);
+                if (distance < lowestDistance) {
+                    lowestDistance = distance;
+                    bestMatch = student;
                 }
+            });
+
+            // Threshold <= 0.5 indicates same person match
+            const MATCH_THRESHOLD = 0.5;
+            if (lowestDistance <= MATCH_THRESHOLD) {
+                const confidence = Math.round((1 - lowestDistance) * 100);
+                updateStatus(`Identified: ${bestMatch.name} (${confidence}% Similarity)`, "status-success");
+                addLogEntry(bestMatch.name, `${confidence}%`, 'Present', 'badge-present');
+            } else {
+                updateStatus("Student not recognised (No embedding match in database).", "status-danger");
+                addLogEntry('Unknown', 'N/A', 'Rejected', 'badge-unknown');
             }
         }
 
-        function addLogEntry(id, name, statusText, badgeClass) {
+        function addLogEntry(name, confidence, statusText, badgeClass) {
             const row = document.createElement('tr');
             const timeStr = new Date().toLocaleTimeString();
             row.innerHTML = `
-                <td>${id}</td>
                 <td>${name}</td>
+                <td>${confidence}</td>
                 <td>${timeStr}</td>
                 <td><span class="badge ${badgeClass}">${statusText}</span></td>
             `;
