@@ -28,7 +28,7 @@
         .btn-portal-admin { background: #343a40; color: #fff; }
         .btn-portal:hover { opacity: 0.9; }
 
-        /* Main Dashboard (Hidden by default until login) */
+        /* Main Dashboard */
         .dashboard { display: none; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fff; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .user-box { display: flex; align-items: center; gap: 10px; }
@@ -64,7 +64,7 @@
 </head>
 <body>
 
-    <!-- Initial Landing / Auth Page -->
+    <!-- Landing / Auth View -->
     <div id="auth-screen" class="auth-screen">
         <div class="auth-card">
             <h1>AI Attendance System</h1>
@@ -190,7 +190,7 @@
             }
         });
 
-        // 1. Google Sign-In Flow
+        // 1. Google Auth Function
         function handleGoogleAuth() {
             auth.signInWithPopup(googleProvider)
                 .catch((error) => {
@@ -203,31 +203,48 @@
                 });
         }
 
-        // 2. Admin Sign-In Flow (Prompt for Credentials)
+        // 2. Passcode Admin Auth Function
         function handleAdminAuth() {
-            const email = prompt("Enter Admin Email:");
-            if (!email) return;
-            const password = prompt("Enter Admin Password:");
-            if (!password) return;
+            const adminPassword = "krm#project";
+            const input = prompt("Enter Admin Passcode:");
 
-            auth.signInWithEmailAndPassword(email, password)
-                .catch((error) => {
-                    alert("Admin Auth Failed: " + error.message);
-                });
+            if (input === adminPassword) {
+                currentUser = {
+                    displayName: "System Admin",
+                    email: "admin@krm.project",
+                    photoURL: ""
+                };
+
+                authScreen.style.display = 'none';
+                dashboard.style.display = 'block';
+
+                userEmail.textContent = currentUser.displayName;
+                userPhoto.style.display = 'none';
+
+                loadStudentsFromDatabase();
+                listenToAttendanceLogs();
+
+                updateStatus("Logged in as Admin. System ready.", "status-success");
+            } else if (input !== null) {
+                alert("Incorrect Admin Passcode!");
+            }
         }
 
         // 3. Sign Out Function
         function signOut() {
-            auth.signOut().then(() => {
-                stopCamera();
-            });
+            if (auth.currentUser) {
+                auth.signOut();
+            }
+            currentUser = null;
+            stopCamera();
+            dashboard.style.display = 'none';
+            authScreen.style.display = 'flex';
         }
 
-        // Auth Observer to Switch Screen Views
+        // Observer for Firebase Logins
         auth.onAuthStateChanged(async (user) => {
-            currentUser = user;
             if (user) {
-                // Hide Auth Screen & Display Main Dashboard
+                currentUser = user;
                 authScreen.style.display = 'none';
                 dashboard.style.display = 'block';
 
@@ -245,18 +262,10 @@
                 } catch (err) {
                     console.error("Cloud DB Read Error:", err);
                 }
-            } else {
-                // Display Auth Screen & Hide Main Dashboard
-                dashboard.style.display = 'none';
-                authScreen.style.display = 'flex';
-                
-                registeredStudents = [];
-                registeredCount.textContent = "0";
-                logTable.innerHTML = "";
             }
         });
 
-        // Cloud DB Functions
+        // Cloud Database Functions
         async function loadStudentsFromDatabase() {
             try {
                 const snapshot = await db.collection("students").get();
