@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Attendance System - High Accuracy & Large Viewport</title>
+    <title>AI Attendance System - Optimized Detection & Viewport</title>
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -67,15 +67,15 @@
         .stat-card h4 { font-size: 20px; font-weight: 700; color: var(--text-main); margin-top: 1px; }
 
         /* Workspace Layout */
-        .main-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; min-height: 0; }
+        .main-container { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 12px; flex: 1; min-height: 0; }
         @media (max-width: 992px) { .main-container { grid-template-columns: 1fr; overflow-y: auto; } }
         
         .card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 14px 18px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; min-height: 0; }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
         .card-header h3 { font-size: 15px; font-weight: 700; color: var(--text-main); }
         
-        /* Expanded Camera UI Container */
-        .video-wrapper { position: relative; width: 100%; flex: 1; min-height: 280px; background: #090d16; border-radius: var(--radius-md); overflow: hidden; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border-color); }
+        /* Large Viewport Camera UI Container */
+        .video-wrapper { position: relative; width: 100%; flex: 1; min-height: 300px; background: #090d16; border-radius: var(--radius-md); overflow: hidden; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border-color); }
         video { width: 100%; height: 100%; object-fit: cover; }
         canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
         
@@ -91,14 +91,14 @@
         .btn-google { background: var(--danger); color: #fff; font-size: 12px; padding: 6px 12px; }
         button:disabled { background: #e2e8f0 !important; color: #94a3b8 !important; cursor: not-allowed; }
         
-        /* Dynamic Status Notification Box */
+        /* Status Box */
         .status-box { margin-top: 8px; padding: 10px; border-radius: var(--radius-md); font-weight: 600; font-size: 13px; text-align: center; flex-shrink: 0; }
         .status-idle { background: #f1f5f9; color: var(--text-muted); }
         .status-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
         .status-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
         .status-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 
-        /* Larger Text Tables UI - Internal Scroll */
+        /* Tables UI */
         .table-container { flex: 1; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); min-height: 0; }
         table { width: 100%; border-collapse: separate; border-spacing: 0; }
         th, td { text-align: left; padding: 11px 14px; font-size: 13px; }
@@ -170,12 +170,12 @@
             </div>
             <div class="stat-card">
                 <span>Detection Engine</span>
-                <h4 style="font-size: 14px; margin-top: 2px; color: var(--primary);">SSD MobileNetV1</h4>
+                <h4 style="font-size: 14px; margin-top: 2px; color: var(--primary);">SSD MobileNetV1 (Tuned)</h4>
             </div>
         </div>
 
         <div class="main-container">
-            <!-- Left Column: Camera Controls -->
+            <!-- Left Column: Camera Viewport -->
             <div class="card">
                 <div class="card-header">
                     <h3>Live Camera Viewport</h3>
@@ -276,7 +276,7 @@
 
         auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-        // Dynamic Elements
+        // Elements
         const authScreen = document.getElementById('auth-screen');
         const dashboard = document.getElementById('dashboard');
         const manageModal = document.getElementById('manage-modal');
@@ -305,15 +305,16 @@
         
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
 
+        // Load Facial Detection Neural Nets
         window.addEventListener('DOMContentLoaded', async () => {
             try {
                 await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-                modelStatus.textContent = "High-Precision Neural Models: Ready";
+                modelStatus.textContent = "High-Precision Neural Engine: Ready";
             } catch (err) {
                 console.error(err);
-                modelStatus.textContent = "Model Error: Check connection to face-api models.";
+                modelStatus.textContent = "Model Load Error: Check connection to neural model repository.";
             }
         });
 
@@ -321,11 +322,7 @@
             auth.signInWithPopup(googleProvider)
                 .catch((error) => {
                     console.error("Login Error:", error);
-                    if (error.code === 'auth/popup-blocked') {
-                        alert("Please enable pop-ups in your browser to sign in.");
-                    } else {
-                        alert("Auth Error: " + error.message);
-                    }
+                    alert("Auth Error: " + error.message);
                 });
         }
 
@@ -375,7 +372,7 @@
                     await loadStudentsFromDatabase();
                     listenToAttendanceLogs();
                 } catch (err) {
-                    console.error("Cloud DB Read Error:", err);
+                    console.error("Cloud DB Error:", err);
                 }
             }
         });
@@ -529,10 +526,14 @@
             }
         }
 
+        /* Scaled Detection Core */
         async function getFaceDescriptor() {
-            const detection = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
-                .withFaceLandmarks()
-                .withFaceDescriptor();
+            const detection = await faceapi.detectSingleFace(
+                video, 
+                new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })
+            )
+            .withFaceLandmarks()
+            .withFaceDescriptor();
 
             if (detection) {
                 drawBoundingBox(detection);
@@ -568,11 +569,11 @@
         async function registerFace() {
             if (!currentUser) return;
 
-            updateStatus("Extracting high-precision vector...", "status-idle");
+            updateStatus("Extracting landmark descriptor...", "status-idle");
             const detection = await getFaceDescriptor();
 
             if (!detection) {
-                updateStatus("No clear face detected. Enhance lighting and center face.", "status-warning");
+                updateStatus("No face detected. Adjust lighting and face position.", "status-warning");
                 return;
             }
 
@@ -595,7 +596,7 @@
                 await loadStudentsFromDatabase();
                 updateStatus(`Saved "${studentName}" to Cloud Database!`, "status-success");
             } catch (err) {
-                updateStatus("Failed to save to Cloud DB.", "status-danger");
+                updateStatus("Failed to save face profile to DB.", "status-danger");
                 console.error(err);
             }
         }
@@ -617,6 +618,7 @@
             let bestMatch = null;
             let lowestDistance = 1.0;
 
+            // Euclidean distance evaluation loop
             registeredStudents.forEach(student => {
                 const distance = faceapi.euclideanDistance(detection.descriptor, student.descriptor);
                 if (distance < lowestDistance) {
@@ -625,12 +627,13 @@
                 }
             });
 
+            // Threshold cutoff for accurate matches
             if (lowestDistance <= 0.45) {
                 const confidence = Math.round((1 - lowestDistance) * 100);
                 updateStatus(`Identified: ${bestMatch.name} (${confidence}% Match)`, "status-success");
                 await saveAttendanceLog(bestMatch.name, `${confidence}%`, 'Present', 'badge-present');
             } else {
-                updateStatus("Student not recognized. Match threshold not met.", "status-danger");
+                updateStatus("Face not recognized. Match threshold not met.", "status-danger");
                 await saveAttendanceLog('Unknown', 'N/A', 'Rejected', 'badge-unknown');
             }
         }
@@ -660,20 +663,21 @@
             }
         }
 
+        // Camera Logic
         async function startCamera() {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" } 
                 });
                 video.srcObject = stream;
-                updateStatus("Camera active. Ready for scanning.", "status-idle");
+                updateStatus("Camera active. Ready for face recognition.", "status-idle");
                 
                 btnStart.disabled = true;
                 btnScan.disabled = false;
                 btnReg.disabled = false;
                 btnStop.disabled = false;
             } catch (err) {
-                updateStatus("Camera access denied or device unavailable.", "status-danger");
+                updateStatus("Camera permission denied or camera device missing.", "status-danger");
             }
         }
 
