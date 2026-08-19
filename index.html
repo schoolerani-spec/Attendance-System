@@ -119,7 +119,10 @@
         const auth = firebase.auth();
         const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-        // UI & State Elements
+        // Enforce Local Persistence so user state is remembered across reloads
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+        // UI Elements & State
         const video = document.getElementById('webcam');
         const statusMessage = document.getElementById('status-message');
         const modelStatus = document.getElementById('model-status');
@@ -139,38 +142,44 @@
         let registeredStudents = [];
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
 
-        // Initialize Models & Process Redirect on Startup
+        // Load Face API Models
         window.addEventListener('DOMContentLoaded', async () => {
-            // Handle completion of Google redirect login flow
-            auth.getRedirectResult().catch((error) => {
-                if (error.code) {
-                    console.error("Auth Redirect Error:", error.message);
-                }
-            });
-
             try {
                 await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
                 
                 modelStatus.textContent = "AI & Models: Ready";
-                updateStatus("System ready. Please sign in with Google.", "status-idle");
+                if (!currentUser) updateStatus("System ready. Please sign in with Google.", "status-idle");
             } catch (err) {
                 console.error(err);
                 modelStatus.textContent = "AI Error: Failed to load models";
             }
         });
 
-        // Google Authentication Logic (Using Redirect to avoid popup blocks)
+        // Robust Google Auth Handler using Popup Flow
         function handleGoogleAuth() {
             if (currentUser) {
-                auth.signOut();
+                auth.signOut().then(() => {
+                    updateStatus("Signed out successfully.", "status-idle");
+                });
             } else {
-                auth.signInWithRedirect(googleProvider);
+                auth.signInWithPopup(googleProvider)
+                    .then((result) => {
+                        console.log("Logged in:", result.user.email);
+                    })
+                    .catch((error) => {
+                        console.error("Login Error:", error);
+                        if (error.code === 'auth/popup-blocked') {
+                            alert("Pop-up blocked by browser! Please allow pop-ups for this site in your address bar.");
+                        } else {
+                            alert("Auth Error: " + error.message);
+                        }
+                    });
             }
         }
 
-        // Firebase Auth State Observer
+        // Persistent Auth Observer
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             if (user) {
@@ -178,13 +187,15 @@
                 userPhoto.src = user.photoURL || '';
                 userPhoto.style.display = 'block';
                 btnAuth.textContent = "Sign Out";
-                
                 btnStart.disabled = false;
                 updateStatus(`Welcome ${user.displayName || 'User'}! Click 'Start Camera'.`, "status-success");
 
-                // Load Data from Cloud Firestore
-                await loadStudentsFromDatabase();
-                listenToAttendanceLogs();
+                try {
+                    await loadStudentsFromDatabase();
+                    listenToAttendanceLogs();
+                } catch (err) {
+                    console.error("Database connection error:", err);
+                }
             } else {
                 userEmail.textContent = "Not Signed In";
                 userPhoto.style.display = 'none';
@@ -195,11 +206,10 @@
                 registeredStudents = [];
                 registeredCount.textContent = "0";
                 logTable.innerHTML = "";
-                updateStatus("Signed out. Please log in with Google.", "status-idle");
             }
         });
 
-        // Fetch Face Vectors from Firestore
+        // Load Face Encodings from Firestore DB
         async function loadStudentsFromDatabase() {
             try {
                 const snapshot = await db.collection("students").get();
@@ -217,7 +227,7 @@
             }
         }
 
-        // Realtime Listener for Attendance Logs
+        // Live Realtime Listener for Attendance Logs
         function listenToAttendanceLogs() {
             db.collection("attendance_logs")
               .orderBy("timestamp", "desc")
@@ -231,7 +241,7 @@
               });
         }
 
-        // Register New Face Vector to Cloud Database
+        // Register New Face Vector into Database
         async function registerFace() {
             if (!currentUser) {
                 alert("Please sign in with Google first.");
@@ -267,7 +277,7 @@
             }
         }
 
-        // Save Attendance Result to Cloud Database
+        // Log Scan Result to Database
         async function saveAttendanceLog(name, confidence, statusText, badgeClass) {
             const timeStr = new Date().toLocaleTimeString();
             try {
@@ -281,11 +291,11 @@
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
             } catch (err) {
-                console.error("Error logging attendance to DB:", err);
+                console.error("Error logging attendance:", err);
             }
         }
 
-        // Camera Controls
+        // Camera Logic
         async function startCamera() {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ video: true });
