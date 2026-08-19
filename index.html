@@ -267,9 +267,7 @@
 
             if (input === adminPassword) {
                 try {
-                    // Sign in anonymously to get a valid Firebase auth.uid for isolated storage
                     await auth.signInAnonymously();
-                    updateStatus("Logged in as Admin. System ready.", "status-success");
                 } catch (error) {
                     alert("Admin Authentication Error: " + error.message + "\n(Make sure 'Anonymous Auth' is enabled in Firebase Console)");
                 }
@@ -286,6 +284,10 @@
             }
             currentUser = null;
             stopCamera();
+            
+            // Reset status box UI state
+            updateStatus("System ready. Click 'Start Camera'.", "status-idle");
+
             dashboard.style.display = 'none';
             authScreen.style.display = 'flex';
         }
@@ -440,7 +442,6 @@
             if (!currentUser) return;
             if (confirm("⚠️ PERMANENT ACTION:\nAre you sure you want to delete ALL registered student face vectors AND all attendance logs?")) {
                 try {
-                    // Delete all user's students
                     const studentsSnapshot = await db.collection("users")
                                                      .doc(currentUser.uid)
                                                      .collection("students")
@@ -449,7 +450,6 @@
                     studentsSnapshot.docs.forEach(doc => batchStudents.delete(doc.ref));
                     await batchStudents.commit();
 
-                    // Delete all user's attendance logs
                     const logsSnapshot = await db.collection("users")
                                                  .doc(currentUser.uid)
                                                  .collection("attendance_logs")
