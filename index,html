@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Attendance System - On-Demand Scan</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; color: #333; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fff; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .main-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
+        .video-wrapper { position: relative; width: 100%; height: 320px; background: #000; border-radius: 6px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        
+        .face-overlay { position: absolute; border: 2px solid #00ff66; border-radius: 4px; display: none; width: 140px; height: 140px; }
+        .face-label { position: absolute; top: -25px; left: 0; background: #00ff66; color: #000; font-size: 12px; font-weight: bold; padding: 2px 6px; border-radius: 2px; }
+        
+        .controls { display: flex; gap: 10px; margin-top: 15px; }
+        button { flex: 1; padding: 10px; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-start { background: #28a745; color: #fff; }
+        .btn-scan { background: #007bff; color: #fff; }
+        .btn-stop { background: #dc3545; color: #fff; }
+        button:disabled { background: #cccccc; cursor: not-allowed; }
+        
+        .status-box { margin-top: 15px; padding: 12px; border-radius: 4px; font-weight: bold; font-size: 14px; text-align: center; }
+        .status-idle { background: #e9ecef; color: #495057; }
+        .status-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .status-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #dee2e6; font-size: 14px; }
+        th { background: #f8f9fa; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .badge-present { background: #d4edda; color: #155724; }
+        .badge-unknown { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>AI Attendance Dashboard</h2>
+        <span id="session-status">Status: <strong>Offline</strong></span>
+    </div>
+
+    <div class="main-container">
+        <div class="card">
+            <h3>Camera Stream</h3>
+            <div class="video-wrapper">
+                <video id="webcam" autoplay playsinline muted></video>
+                <div id="face-box" class="face-overlay">
+                    <div id="face-name" class="face-label">Detecting...</div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn-start" id="btn-start" onclick="startCamera()">Start Camera</button>
+                <button class="btn-scan" id="btn-scan" onclick="scanFace()" disabled>Scan / Mark Face</button>
+                <button class="btn-stop" id="btn-stop" onclick="stopCamera()" disabled>Stop Session</button>
+            </div>
+
+            <div id="status-message" class="status-box status-idle">
+                Click "Start Camera" to turn on the video feed.
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Live Attendance Log</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Name</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="log-table-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const faceBox = document.getElementById('face-box');
+        const faceName = document.getElementById('face-name');
+        const statusMessage = document.getElementById('status-message');
+        const sessionStatus = document.getElementById('session-status');
+        const logTable = document.getElementById('log-table-body');
+        
+        const btnStart = document.getElementById('btn-start');
+        const btnScan = document.getElementById('btn-scan');
+        const btnStop = document.getElementById('btn-stop');
+        
+        let stream = null;
+
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                sessionStatus.innerHTML = "Status: <strong style='color: green;'>Active</strong>";
+                updateStatus("Camera active. Click 'Scan / Mark Face' to log attendance.", "status-idle");
+                
+                btnStart.disabled = true;
+                btnScan.disabled = false;
+                btnStop.disabled = false;
+            } catch (err) {
+                updateStatus("Error: Camera access failed.", "status-danger");
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            faceBox.style.display = 'none';
+            sessionStatus.innerHTML = "Status: <strong>Offline</strong>";
+            updateStatus("Session stopped.", "status-idle");
+            
+            btnStart.disabled = false;
+            btnScan.disabled = true;
+            btnStop.disabled = true;
+        }
+
+        function updateStatus(msg, className) {
+            statusMessage.textContent = msg;
+            statusMessage.className = `status-box ${className}`;
+        }
+
+        // TRIGGERED MANUAL SCAN ON BUTTON CLICK
+        function scanFace() {
+            if (!stream) return;
+
+            const scenarios = [
+                { type: 'known', name: 'Alex Johnson', id: 'STU-101' },
+                { type: 'known', name: 'Maria Garcia', id: 'STU-102' },
+                { type: 'unknown', name: 'Unknown Face', id: 'N/A' },
+                { type: 'blurred', name: '', id: '' }
+            ];
+
+            const result = scenarios[Math.floor(Math.random() * scenarios.length)];
+            
+            if (result.type === 'blurred') {
+                faceBox.style.display = 'none';
+                updateStatus("Face unclear. Please align with camera and scan again.", "status-warning");
+            } else {
+                faceBox.style.display = 'block';
+                faceBox.style.top = '80px';
+                faceBox.style.left = '160px';
+                faceName.textContent = result.name;
+
+                if (result.type === 'known') {
+                    updateStatus(`Identified: ${result.name}`, "status-success");
+                    addLogEntry(result.id, result.name, 'Present', 'badge-present');
+                } else {
+                    updateStatus("Student not recognised.", "status-danger");
+                    addLogEntry('N/A', 'Unknown', 'Rejected', 'badge-unknown');
+                }
+
+                // Briefly show bounding box for 2.5 seconds after button click
+                setTimeout(() => {
+                    faceBox.style.display = 'none';
+                }, 2500);
+            }
+        }
+
+        function addLogEntry(id, name, statusText, badgeClass) {
+            const row = document.createElement('tr');
+            const timeStr = new Date().toLocaleTimeString();
+            row.innerHTML = `
+                <td>${id}</td>
+                <td>${name}</td>
+                <td>${timeStr}</td>
+                <td><span class="badge ${badgeClass}">${statusText}</span></td>
+            `;
+            logTable.prepend(row);
+        }
+    </script>
+</body>
+</html>
