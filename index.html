@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Attendance System - Clean Viewport</title>
+    <title>AI Attendance System - Optimized Detection Engine</title>
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -38,7 +38,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
         body { background-color: var(--bg-main); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         
-        /* Auth Overlay Page */
         .auth-screen { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; z-index: 2000; padding: 20px; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
         .auth-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 36px 28px; border-radius: var(--radius-lg); width: 100%; max-width: 420px; text-align: center; box-shadow: var(--shadow-lg); }
         .auth-card h1 { font-size: 26px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
@@ -51,7 +50,6 @@
         .btn-portal-admin { background: var(--primary); color: #fff; }
         .btn-portal-admin:hover { background: var(--primary-hover); }
 
-        /* Main Dashboard Structure */
         .dashboard { display: none; width: 100%; max-width: 1440px; margin: 0 auto; height: 100vh; padding: 12px; flex-direction: column; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: var(--card-bg); padding: 10px 18px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); flex-shrink: 0; }
         .header h2 { font-size: 18px; font-weight: 700; color: var(--text-main); }
@@ -60,13 +58,11 @@
         .user-box { display: flex; align-items: center; gap: 10px; }
         .user-avatar { width: 32px; height: 32px; border-radius: 50%; display: none; border: 2px solid var(--primary); }
         
-        /* Stats Metric Cards */
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px; flex-shrink: 0; }
         .stat-card { background: var(--card-bg); border-radius: var(--radius-md); padding: 10px 16px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }
         .stat-card span { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
         .stat-card h4 { font-size: 20px; font-weight: 700; color: var(--text-main); margin-top: 1px; }
 
-        /* Workspace Layout */
         .main-container { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 12px; flex: 1; min-height: 0; }
         @media (max-width: 992px) { .main-container { grid-template-columns: 1fr; overflow-y: auto; } }
         
@@ -74,7 +70,6 @@
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
         .card-header h3 { font-size: 15px; font-weight: 700; color: var(--text-main); }
         
-        /* Clean Viewport Camera UI Container */
         .video-wrapper { position: relative; width: 100%; flex: 1; min-height: 300px; background: #090d16; border-radius: var(--radius-md); overflow: hidden; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border-color); }
         video { width: 100%; height: 100%; object-fit: cover; }
         
@@ -90,14 +85,12 @@
         .btn-google { background: var(--danger); color: #fff; font-size: 12px; padding: 6px 12px; }
         button:disabled { background: #e2e8f0 !important; color: #94a3b8 !important; cursor: not-allowed; }
         
-        /* Status Box */
         .status-box { margin-top: 8px; padding: 10px; border-radius: var(--radius-md); font-weight: 600; font-size: 13px; text-align: center; flex-shrink: 0; }
         .status-idle { background: #f1f5f9; color: var(--text-muted); }
         .status-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
         .status-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
         .status-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 
-        /* Tables UI */
         .table-container { flex: 1; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); min-height: 0; }
         table { width: 100%; border-collapse: separate; border-spacing: 0; }
         th, td { text-align: left; padding: 11px 14px; font-size: 13px; }
@@ -111,7 +104,6 @@
 
         tr.date-separator td { border-top: 6px solid var(--bg-main); padding-top: 10px; }
 
-        /* Modal Overlay */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: var(--card-bg); padding: 22px; border-radius: var(--radius-lg); width: 90%; max-width: 560px; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--border-color); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
@@ -125,7 +117,6 @@
 </head>
 <body>
 
-    <!-- Landing / Auth View -->
     <div id="auth-screen" class="auth-screen">
         <div class="auth-card">
             <h1>AI Attendance</h1>
@@ -142,12 +133,11 @@
         </div>
     </div>
 
-    <!-- Main System Dashboard -->
     <div id="dashboard" class="dashboard">
         <div class="header">
             <div>
                 <h2>Attendance Portal</h2>
-                <small id="model-status">Loading Neural Models & Database...</small>
+                <small id="model-status">Loading SSD MobileNet + Low-Light Engine...</small>
             </div>
             <div class="user-box">
                 <img id="user-photo" class="user-avatar" src="" alt="User Avatar">
@@ -157,7 +147,6 @@
             </div>
         </div>
 
-        <!-- Metric Cards Grid -->
         <div class="stats-grid">
             <div class="stat-card">
                 <span>Registered Faces</span>
@@ -169,12 +158,11 @@
             </div>
             <div class="stat-card">
                 <span>Detection Engine</span>
-                <h4 style="font-size: 14px; margin-top: 2px; color: var(--primary);">SSD MobileNetV1 (Tuned)</h4>
+                <h4 style="font-size: 14px; margin-top: 2px; color: var(--primary);">Fast Single-Pass Low-Light Engine</h4>
             </div>
         </div>
 
         <div class="main-container">
-            <!-- Left Column: Clean Video Viewport -->
             <div class="card">
                 <div class="card-header">
                     <h3>Live Camera Viewport</h3>
@@ -195,7 +183,6 @@
                 </div>
             </div>
 
-            <!-- Right Column: Cloud Records -->
             <div class="card">
                 <div class="card-header">
                     <h3>Attendance Logs</h3>
@@ -219,7 +206,6 @@
         </div>
     </div>
 
-    <!-- Manage Data Modal -->
     <div id="manage-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -255,8 +241,9 @@
         </div>
     </div>
 
+    <canvas id="processing-canvas" style="display: none;"></canvas>
+
     <script>
-        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyACT1695I7JVKCh5zOTYKK9tLrW3XCNLEU",
             authDomain: "attendance-app-d3fc2.firebaseapp.com",
@@ -267,7 +254,6 @@
             measurementId: "G-ZZ942T9W9Y"
         };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
@@ -275,7 +261,6 @@
 
         auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-        // Elements
         const authScreen = document.getElementById('auth-screen');
         const dashboard = document.getElementById('dashboard');
         const manageModal = document.getElementById('manage-modal');
@@ -289,6 +274,7 @@
         const logsCount = document.getElementById('logs-count');
         const userEmail = document.getElementById('user-email');
         const userPhoto = document.getElementById('user-photo');
+        const processingCanvas = document.getElementById('processing-canvas');
         
         const btnStart = document.getElementById('btn-start');
         const btnReg = document.getElementById('btn-reg');
@@ -299,16 +285,19 @@
         let currentUser = null;
         let registeredStudents = [];
         let unsubscribeLogs = null;
+        let isProcessing = false;
         
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
 
-        // Load Facial Detection Neural Nets
         window.addEventListener('DOMContentLoaded', async () => {
             try {
-                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-                modelStatus.textContent = "High-Precision Neural Engine: Ready";
+                // Optimized architecture: Load SSD + Landmarks + Recognition models directly
+                await Promise.all([
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                ]);
+                modelStatus.textContent = "Fast SSD Low-Light Engine: Ready";
             } catch (err) {
                 console.error(err);
                 modelStatus.textContent = "Model Load Error: Check connection to neural model repository.";
@@ -523,34 +512,84 @@
             }
         }
 
-        /* Pure Background Processing (Clean Viewport) */
+        /* Fast Pixel Preprocessor: Adaptive Gamma + Contrast Normalization */
+        function preprocessLowLight(videoElement) {
+            const ctx = processingCanvas.getContext('2d', { willReadFrequently: true });
+            const width = videoElement.videoWidth || 640;
+            const height = videoElement.videoHeight || 480;
+            
+            processingCanvas.width = width;
+            processingCanvas.height = height;
+
+            ctx.drawImage(videoElement, 0, 0, width, height);
+            const imgData = ctx.getImageData(0, 0, width, height);
+            const data = imgData.data;
+
+            // Fast subsampled luminance calculation (4x speed boost over full pass)
+            let totalLuminance = 0;
+            const step = 16; 
+            let samples = 0;
+            for (let i = 0; i < data.length; i += step) {
+                totalLuminance += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                samples++;
+            }
+            const avgLuminance = totalLuminance / samples;
+
+            // Low-Light Adjustment
+            if (avgLuminance < 90) {
+                const gamma = Math.max(0.35, avgLuminance / 120); 
+                const gain = Math.min(2.5, 120 / Math.max(avgLuminance, 15));
+
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = Math.min(255, Math.pow(data[i] / 255, gamma) * 255 * gain);
+                    data[i + 1] = Math.min(255, Math.pow(data[i + 1] / 255, gamma) * 255 * gain);
+                    data[i + 2] = Math.min(255, Math.pow(data[i + 2] / 255, gamma) * 255 * gain);
+                }
+                ctx.putImageData(imgData, 0, 0);
+                return { element: processingCanvas, lowLightBoosted: true };
+            }
+
+            return { element: videoElement, lowLightBoosted: false };
+        }
+
+        /* Optimized Pattern Detection Pipeline using Fast SSD MobileNet */
         async function getFaceDescriptor() {
-            // Processes landmarks & face recognition in background without overlaying visual bounding boxes
-            return await faceapi.detectSingleFace(
-                video, 
-                new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })
+            const { element, lowLightBoosted } = preprocessLowLight(video);
+
+            if (lowLightBoosted) {
+                updateStatus("Low-light active: Adaptive gain applied...", "status-warning");
+            }
+
+            // High-Performance Detector (SSD MobileNet V1)
+            const detection = await faceapi.detectSingleFace(
+                element, 
+                new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 })
             )
             .withFaceLandmarks()
             .withFaceDescriptor();
+
+            return detection;
         }
 
         async function registerFace() {
-            if (!currentUser) return;
-
-            updateStatus("Extracting landmark descriptor...", "status-idle");
-            const detection = await getFaceDescriptor();
-
-            if (!detection) {
-                updateStatus("No face detected. Adjust lighting and face position.", "status-warning");
-                return;
-            }
-
-            const studentName = prompt("Enter Student Name:");
-            if (!studentName || !studentName.trim()) return;
-
-            const descriptorArray = Array.from(detection.descriptor);
+            if (!currentUser || isProcessing) return;
+            isProcessing = true;
+            btnReg.disabled = true;
 
             try {
+                updateStatus("Extracting 68-point spatial descriptors...", "status-idle");
+                const detection = await getFaceDescriptor();
+
+                if (!detection) {
+                    updateStatus("No face detected. Adjust lighting or camera angle.", "status-warning");
+                    return;
+                }
+
+                const studentName = prompt("Enter Student Name:");
+                if (!studentName || !studentName.trim()) return;
+
+                const descriptorArray = Array.from(detection.descriptor);
+
                 await db.collection("users")
                         .doc(currentUser.uid)
                         .collection("students")
@@ -566,6 +605,9 @@
             } catch (err) {
                 updateStatus("Failed to save face profile to DB.", "status-danger");
                 console.error(err);
+            } finally {
+                isProcessing = false;
+                btnReg.disabled = false;
             }
         }
 
@@ -574,35 +616,44 @@
                 updateStatus("No registered faces found in Cloud DB.", "status-warning");
                 return;
             }
+            if (isProcessing) return;
+            isProcessing = true;
+            btnScan.disabled = true;
 
-            updateStatus("Matching facial landmarks...", "status-idle");
-            const detection = await getFaceDescriptor();
+            try {
+                updateStatus("Analyzing facial geometric patterns...", "status-idle");
+                const detection = await getFaceDescriptor();
 
-            if (!detection) {
-                updateStatus("Face unclear or not detected.", "status-warning");
-                return;
-            }
-
-            let bestMatch = null;
-            let lowestDistance = 1.0;
-
-            // Euclidean distance evaluation loop
-            registeredStudents.forEach(student => {
-                const distance = faceapi.euclideanDistance(detection.descriptor, student.descriptor);
-                if (distance < lowestDistance) {
-                    lowestDistance = distance;
-                    bestMatch = student;
+                if (!detection) {
+                    updateStatus("Face unclear or not detected.", "status-warning");
+                    return;
                 }
-            });
 
-            // Threshold cutoff for accurate matches
-            if (lowestDistance <= 0.45) {
-                const confidence = Math.round((1 - lowestDistance) * 100);
-                updateStatus(`Identified: ${bestMatch.name} (${confidence}% Match)`, "status-success");
-                await saveAttendanceLog(bestMatch.name, `${confidence}%`, 'Present', 'badge-present');
-            } else {
-                updateStatus("Face not recognized. Match threshold not met.", "status-danger");
-                await saveAttendanceLog('Unknown', 'N/A', 'Rejected', 'badge-unknown');
+                let bestMatch = null;
+                let lowestDistance = 1.0;
+
+                registeredStudents.forEach(student => {
+                    const distance = faceapi.euclideanDistance(detection.descriptor, student.descriptor);
+                    if (distance < lowestDistance) {
+                        lowestDistance = distance;
+                        bestMatch = student;
+                    }
+                });
+
+                if (lowestDistance <= 0.48) {
+                    const confidence = Math.round((1 - lowestDistance) * 100);
+                    updateStatus(`Identified: ${bestMatch.name} (${confidence}% Accuracy)`, "status-success");
+                    await saveAttendanceLog(bestMatch.name, `${confidence}%`, 'Present', 'badge-present');
+                } else {
+                    updateStatus("Face not recognized. Pattern threshold not met.", "status-danger");
+                    await saveAttendanceLog('Unknown', 'N/A', 'Rejected', 'badge-unknown');
+                }
+            } catch (err) {
+                console.error(err);
+                updateStatus("Error during scanning pipeline.", "status-danger");
+            } finally {
+                isProcessing = false;
+                btnScan.disabled = false;
             }
         }
 
@@ -631,21 +682,24 @@
             }
         }
 
-        // Camera Logic
         async function startCamera() {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" } 
+                    video: { 
+                        width: { ideal: 1280 }, 
+                        height: { ideal: 720 }, 
+                        facingMode: "user"
+                    } 
                 });
                 video.srcObject = stream;
-                updateStatus("Camera active. Ready for face recognition.", "status-idle");
+                updateStatus("Camera active. Ready for facial recognition.", "status-idle");
                 
                 btnStart.disabled = true;
                 btnScan.disabled = false;
                 btnReg.disabled = false;
                 btnStop.disabled = false;
             } catch (err) {
-                updateStatus("Camera permission denied or camera device missing.", "status-danger");
+                updateStatus("Camera permission denied or camera missing.", "status-danger");
             }
         }
 
