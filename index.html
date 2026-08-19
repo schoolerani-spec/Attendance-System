@@ -139,8 +139,15 @@
         let registeredStudents = [];
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
 
-        // Initialize Models on Startup
+        // Initialize Models & Process Redirect on Startup
         window.addEventListener('DOMContentLoaded', async () => {
+            // Handle completion of Google redirect login flow
+            auth.getRedirectResult().catch((error) => {
+                if (error.code) {
+                    console.error("Auth Redirect Error:", error.message);
+                }
+            });
+
             try {
                 await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
@@ -154,14 +161,12 @@
             }
         });
 
-        // Google Authentication Logic
+        // Google Authentication Logic (Using Redirect to avoid popup blocks)
         function handleGoogleAuth() {
             if (currentUser) {
                 auth.signOut();
             } else {
-                auth.signInWithPopup(googleProvider).catch(err => {
-                    alert("Google Auth Failed: " + err.message);
-                });
+                auth.signInWithRedirect(googleProvider);
             }
         }
 
