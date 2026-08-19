@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Attendance System - Google Auth & Cloud Database</title>
+    <title>AI Attendance System - User Isolated Database</title>
     
     <!-- Face-API.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
@@ -62,7 +62,7 @@
         .badge-present { background: #d4edda; color: #155724; }
         .badge-unknown { background: #f8d7da; color: #721c24; }
 
-        /* Space Separator for Different Dates */
+        /* Visual Separator for Log Dates */
         tr.date-separator td {
             border-top: 14px solid #f4f6f9;
             padding-top: 10px;
@@ -231,6 +231,7 @@
         let stream = null;
         let currentUser = null;
         let registeredStudents = [];
+        let unsubscribeLogs = null;
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
 
         // Load AI Models
@@ -260,27 +261,18 @@
         }
 
         // 2. Passcode Admin Auth Function
-        function handleAdminAuth() {
+        async function handleAdminAuth() {
             const adminPassword = "krm#project";
             const input = prompt("Enter Admin Passcode:");
 
             if (input === adminPassword) {
-                currentUser = {
-                    displayName: "System Admin",
-                    email: "admin@krm.project",
-                    photoURL: ""
-                };
-
-                authScreen.style.display = 'none';
-                dashboard.style.display = 'block';
-
-                userEmail.textContent = currentUser.displayName;
-                userPhoto.style.display = 'none';
-
-                loadStudentsFromDatabase();
-                listenToAttendanceLogs();
-
-                updateStatus("Logged in as Admin. System ready.", "status-success");
+                try {
+                    // Sign in anonymously to get a valid Firebase auth.uid for isolated storage
+                    await auth.signInAnonymously();
+                    updateStatus("Logged in as Admin. System ready.", "status-success");
+                } catch (error) {
+                    alert("Admin Authentication Error: " + error.message + "\n(Make sure 'Anonymous Auth' is enabled in Firebase Console)");
+                }
             } else if (input !== null) {
                 alert("Incorrect Admin Passcode!");
             }
@@ -288,6 +280,7 @@
 
         // 3. Sign Out Function
         function signOut() {
+            if (unsubscribeLogs) unsubscribeLogs();
             if (auth.currentUser) {
                 auth.signOut();
             }
@@ -304,8 +297,8 @@
                 authScreen.style.display = 'none';
                 dashboard.style.display = 'block';
 
-                userEmail.textContent = user.displayName || user.email;
-                if (user.photoURL) {
+                userEmail.textContent = user.isAnonymous ? "System Admin" : (user.displayName || user.email);
+                if (user.photoURL && !user.isAnonymous) {
                     userPhoto.src = user.photoURL;
                     userPhoto.style.display = 'block';
                 } else {
@@ -321,17 +314,21 @@
             }
         });
 
-        // Cloud Database Functions
+        // User-Isolated Cloud Database Functions
         async function loadStudentsFromDatabase() {
+            if (!currentUser) return;
             try {
-                const snapshot = await db.collection("students").get();
+                const snapshot = await db.collection("users")
+                                         .doc(currentUser.uid)
+                                         .collection("students")
+                                         .get();
                 registeredStudents = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     registeredStudents.push({
                         id: doc.id,
                         name: data.name,
-                        createdBy: data.createdBy || 'Unknown',
+                        createdBy: data.createdBy || (currentUser.isAnonymous ? 'Admin' : currentUser.email),
                         descriptor: new Float32Array(data.descriptor)
                     });
                 });
@@ -342,7 +339,12 @@
         }
 
         function listenToAttendanceLogs() {
-            db.collection("attendance_logs")
+            if (!currentUser) return;
+            if (unsubscribeLogs) unsubscribeLogs();
+
+            unsubscribeLogs = db.collection("users")
+              .doc(currentUser.uid)
+              .collection("attendance_logs")
               .orderBy("timestamp", "desc")
               .limit(50)
               .onSnapshot(snapshot => {
@@ -352,7 +354,6 @@
                   snapshot.forEach(doc => {
                       const log = doc.data();
                       
-                      // Extract Date
                       let dateStr = log.date;
                       if (!dateStr && log.timestamp) {
                           dateStr = log.timestamp.toDate().toLocaleDateString();
@@ -360,12 +361,13 @@
                           dateStr = new Date().toLocaleDateString();
                       }
 
-                      // Check if date changed to apply spacing
                       const isNewDate = (lastDate !== null && lastDate !== dateStr);
                       lastDate = dateStr;
 
                       renderLogEntry(dateStr, log.name, log.confidence, log.time, log.statusText, log.badgeClass, isNewDate);
                   });
+              }, err => {
+                  console.error("Log subscription error:", err);
               });
         }
 
@@ -400,9 +402,14 @@
         }
 
         async function deleteStudent(docId, name) {
+            if (!currentUser) return;
             if (confirm(`Are you sure you want to delete "${name}" from Cloud DB?`)) {
                 try {
-                    await db.collection("students").doc(docId).delete();
+                    await db.collection("users")
+                            .doc(currentUser.uid)
+                            .collection("students")
+                            .doc(docId)
+                            .delete();
                     await refreshManageTable();
                     updateStatus(`Deleted "${name}" successfully.`, "status-success");
                 } catch (err) {
@@ -412,13 +419,15 @@
         }
 
         async function clearAttendanceLogs() {
+            if (!currentUser) return;
             if (confirm("Are you sure you want to delete all attendance logs?")) {
                 try {
-                    const snapshot = await db.collection("attendance_logs").get();
+                    const snapshot = await db.collection("users")
+                                             .doc(currentUser.uid)
+                                             .collection("attendance_logs")
+                                             .get();
                     const batch = db.batch();
-                    snapshot.docs.forEach(doc => {
-                        batch.delete(doc.ref);
-                    });
+                    snapshot.docs.forEach(doc => batch.delete(doc.ref));
                     await batch.commit();
                     alert("Attendance logs cleared.");
                 } catch (err) {
@@ -428,16 +437,23 @@
         }
 
         async function clearAllData() {
+            if (!currentUser) return;
             if (confirm("⚠️ PERMANENT ACTION:\nAre you sure you want to delete ALL registered student face vectors AND all attendance logs?")) {
                 try {
-                    // Delete all students
-                    const studentsSnapshot = await db.collection("students").get();
+                    // Delete all user's students
+                    const studentsSnapshot = await db.collection("users")
+                                                     .doc(currentUser.uid)
+                                                     .collection("students")
+                                                     .get();
                     const batchStudents = db.batch();
                     studentsSnapshot.docs.forEach(doc => batchStudents.delete(doc.ref));
                     await batchStudents.commit();
 
-                    // Delete all attendance logs
-                    const logsSnapshot = await db.collection("attendance_logs").get();
+                    // Delete all user's attendance logs
+                    const logsSnapshot = await db.collection("users")
+                                                 .doc(currentUser.uid)
+                                                 .collection("attendance_logs")
+                                                 .get();
                     const batchLogs = db.batch();
                     logsSnapshot.docs.forEach(doc => batchLogs.delete(doc.ref));
                     await batchLogs.commit();
@@ -468,12 +484,15 @@
             const descriptorArray = Array.from(detection.descriptor);
 
             try {
-                await db.collection("students").add({
-                    name: studentName,
-                    descriptor: descriptorArray,
-                    createdBy: currentUser.email,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                await db.collection("users")
+                        .doc(currentUser.uid)
+                        .collection("students")
+                        .add({
+                            name: studentName,
+                            descriptor: descriptorArray,
+                            createdBy: currentUser.isAnonymous ? 'Admin' : currentUser.email,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
 
                 await loadStudentsFromDatabase();
                 updateStatus(`Saved "${studentName}" to Cloud Database!`, "status-success");
@@ -484,21 +503,25 @@
         }
 
         async function saveAttendanceLog(name, confidence, statusText, badgeClass) {
+            if (!currentUser) return;
             const now = new Date();
             const timeStr = now.toLocaleTimeString();
             const dateStr = now.toLocaleDateString();
 
             try {
-                await db.collection("attendance_logs").add({
-                    name,
-                    confidence,
-                    date: dateStr,
-                    time: timeStr,
-                    statusText,
-                    badgeClass,
-                    scannedBy: currentUser.email,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                await db.collection("users")
+                        .doc(currentUser.uid)
+                        .collection("attendance_logs")
+                        .add({
+                            name,
+                            confidence,
+                            date: dateStr,
+                            time: timeStr,
+                            statusText,
+                            badgeClass,
+                            scannedBy: currentUser.isAnonymous ? 'Admin' : currentUser.email,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        });
             } catch (err) {
                 console.error("Error logging attendance:", err);
             }
