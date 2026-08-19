@@ -3,25 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real AI Attendance System - Facial Embeddings</title>
-    <!-- Load TensorFlow & Face-API from CDN -->
+    <title>AI Attendance System - Google Auth & Cloud Database</title>
+    
+    <!-- Face-API.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+
+    <!-- Firebase SDKs (v10 compat mode) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4f6f9; color: #333; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fff; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .user-box { display: flex; align-items: center; gap: 10px; }
+        .user-avatar { width: 32px; height: 32px; border-radius: 50%; display: none; }
         .main-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
-        .video-wrapper { position: relative; width: 100%; height: 320px; background: #000; border-radius: 6px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+        .video-wrapper { position: relative; width: 100%; height: 300px; background: #000; border-radius: 6px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
         video { width: 100%; height: 100%; object-fit: cover; }
         
         .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
-        button { flex: 1; min-width: 120px; padding: 10px; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button { flex: 1; min-width: 110px; padding: 10px; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-start { background: #28a745; color: #fff; }
         .btn-reg { background: #17a2b8; color: #fff; }
         .btn-scan { background: #007bff; color: #fff; }
         .btn-stop { background: #dc3545; color: #fff; }
+        .btn-google { background: #4285F4; color: #fff; padding: 8px 14px; font-size: 12px; border-radius: 4px; display: flex; align-items: center; gap: 6px; }
         button:disabled { background: #cccccc; cursor: not-allowed; }
         
         .status-box { margin-top: 15px; padding: 12px; border-radius: 4px; font-weight: bold; font-size: 14px; text-align: center; }
@@ -31,9 +41,9 @@
         .status-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #dee2e6; font-size: 14px; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #dee2e6; font-size: 13px; }
         th { background: #f8f9fa; }
-        .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
         .badge-present { background: #d4edda; color: #155724; }
         .badge-unknown { background: #f8d7da; color: #721c24; }
     </style>
@@ -41,39 +51,46 @@
 <body>
 
     <div class="header">
-        <h2>Real AI Facial Recognition Attendance</h2>
-        <span id="model-status">AI Status: <strong>Loading Neural Models...</strong></span>
+        <div>
+            <h2>AI Attendance System</h2>
+            <small id="model-status">Loading Neural Models & Database...</small>
+        </div>
+        <div class="user-box">
+            <img id="user-photo" class="user-avatar" src="" alt="User Avatar">
+            <span id="user-email" style="font-size: 12px; font-weight: bold; color: #666;">Not Signed In</span>
+            <button id="btn-auth" class="btn-google" onclick="handleGoogleAuth()">Sign In with Google</button>
+        </div>
     </div>
 
     <div class="main-container">
         <div class="card">
-            <h3>Camera Stream</h3>
+            <h3>Live Camera</h3>
             <div class="video-wrapper">
                 <video id="webcam" autoplay playsinline muted></video>
             </div>
             
             <div class="controls">
                 <button class="btn-start" id="btn-start" onclick="startCamera()" disabled>Start Camera</button>
-                <button class="btn-reg" id="btn-reg" onclick="registerFace()" disabled>1. Register Face</button>
-                <button class="btn-scan" id="btn-scan" onclick="scanFace()" disabled>2. Scan Attendance</button>
+                <button class="btn-scan" id="btn-scan" onclick="scanFace()" disabled>Scan Attendance</button>
+                <button class="btn-reg" id="btn-reg" onclick="registerFace()" disabled>Register Face</button>
                 <button class="btn-stop" id="btn-stop" onclick="stopCamera()" disabled>Stop</button>
             </div>
 
             <div id="status-message" class="status-box status-idle">
-                Please wait while deep learning models load...
+                Please sign in with Google to access the system...
             </div>
         </div>
 
         <div class="card">
-            <h3>Registered Profiles & Attendance Log</h3>
-            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
-                Registered in Memory: <span id="registered-count">0</span> student(s)
+            <h3>Cloud Database Records</h3>
+            <p style="font-size: 12px; color: #666; margin: 8px 0;">
+                Registered Students in Cloud DB: <strong id="registered-count">0</strong>
             </p>
             <table>
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Match Confidence</th>
+                        <th>Confidence</th>
                         <th>Time</th>
                         <th>Status</th>
                     </tr>
@@ -85,11 +102,32 @@
     </div>
 
     <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyACT1695I7JVKCh5zOTYKK9tLrW3XCNLEU",
+            authDomain: "attendance-app-d3fc2.firebaseapp.com",
+            projectId: "attendance-app-d3fc2",
+            storageBucket: "attendance-app-d3fc2.firebasestorage.app",
+            messagingSenderId: "850381295049",
+            appId: "1:850381295049:web:b59a8d08e872de55d72c18",
+            measurementId: "G-ZZ942T9W9Y"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+        // UI & State Elements
         const video = document.getElementById('webcam');
         const statusMessage = document.getElementById('status-message');
         const modelStatus = document.getElementById('model-status');
         const logTable = document.getElementById('log-table-body');
         const registeredCount = document.getElementById('registered-count');
+        const btnAuth = document.getElementById('btn-auth');
+        const userEmail = document.getElementById('user-email');
+        const userPhoto = document.getElementById('user-photo');
         
         const btnStart = document.getElementById('btn-start');
         const btnReg = document.getElementById('btn-reg');
@@ -97,41 +135,164 @@
         const btnStop = document.getElementById('btn-stop');
         
         let stream = null;
+        let currentUser = null;
+        let registeredStudents = [];
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
-        
-        // Database of registered face vectors in local memory
-        // Format: { name: "Alex", descriptor: Float32Array(128) }
-        const registeredStudents = [];
 
-        // Load Real Neural Network Models from CDN
+        // Initialize Models on Startup
         window.addEventListener('DOMContentLoaded', async () => {
             try {
                 await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
                 
-                modelStatus.innerHTML = "AI Status: <strong style='color: green;'>Models Ready</strong>";
-                updateStatus("AI models loaded! Click 'Start Camera' to begin.", "status-idle");
-                btnStart.disabled = false;
+                modelStatus.textContent = "AI & Models: Ready";
+                updateStatus("System ready. Please sign in with Google.", "status-idle");
             } catch (err) {
                 console.error(err);
-                modelStatus.innerHTML = "AI Status: <strong style='color: red;'>Loading Failed</strong>";
-                updateStatus("Failed to load neural models from CDN.", "status-danger");
+                modelStatus.textContent = "AI Error: Failed to load models";
             }
         });
 
+        // Google Authentication Logic
+        function handleGoogleAuth() {
+            if (currentUser) {
+                auth.signOut();
+            } else {
+                auth.signInWithPopup(googleProvider).catch(err => {
+                    alert("Google Auth Failed: " + err.message);
+                });
+            }
+        }
+
+        // Firebase Auth State Observer
+        auth.onAuthStateChanged(async (user) => {
+            currentUser = user;
+            if (user) {
+                userEmail.textContent = user.displayName || user.email;
+                userPhoto.src = user.photoURL || '';
+                userPhoto.style.display = 'block';
+                btnAuth.textContent = "Sign Out";
+                
+                btnStart.disabled = false;
+                updateStatus(`Welcome ${user.displayName || 'User'}! Click 'Start Camera'.`, "status-success");
+
+                // Load Data from Cloud Firestore
+                await loadStudentsFromDatabase();
+                listenToAttendanceLogs();
+            } else {
+                userEmail.textContent = "Not Signed In";
+                userPhoto.style.display = 'none';
+                btnAuth.textContent = "Sign In with Google";
+                
+                stopCamera();
+                btnStart.disabled = true;
+                registeredStudents = [];
+                registeredCount.textContent = "0";
+                logTable.innerHTML = "";
+                updateStatus("Signed out. Please log in with Google.", "status-idle");
+            }
+        });
+
+        // Fetch Face Vectors from Firestore
+        async function loadStudentsFromDatabase() {
+            try {
+                const snapshot = await db.collection("students").get();
+                registeredStudents = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    registeredStudents.push({
+                        name: data.name,
+                        descriptor: new Float32Array(data.descriptor)
+                    });
+                });
+                registeredCount.textContent = registeredStudents.length;
+            } catch (err) {
+                console.error("Cloud DB Read Error:", err);
+            }
+        }
+
+        // Realtime Listener for Attendance Logs
+        function listenToAttendanceLogs() {
+            db.collection("attendance_logs")
+              .orderBy("timestamp", "desc")
+              .limit(20)
+              .onSnapshot(snapshot => {
+                  logTable.innerHTML = "";
+                  snapshot.forEach(doc => {
+                      const log = doc.data();
+                      renderLogEntry(log.name, log.confidence, log.time, log.statusText, log.badgeClass);
+                  });
+              });
+        }
+
+        // Register New Face Vector to Cloud Database
+        async function registerFace() {
+            if (!currentUser) {
+                alert("Please sign in with Google first.");
+                return;
+            }
+
+            updateStatus("Extracting facial vector...", "status-idle");
+            const detection = await getFaceDescriptor();
+
+            if (!detection) {
+                updateStatus("Face unclear or not detected.", "status-warning");
+                return;
+            }
+
+            const studentName = prompt("Enter Student Name:");
+            if (!studentName) return;
+
+            const descriptorArray = Array.from(detection.descriptor);
+
+            try {
+                await db.collection("students").add({
+                    name: studentName,
+                    descriptor: descriptorArray,
+                    createdBy: currentUser.email,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                await loadStudentsFromDatabase();
+                updateStatus(`Saved "${studentName}" to Cloud Database!`, "status-success");
+            } catch (err) {
+                updateStatus("Failed to save to Cloud DB.", "status-danger");
+                console.error(err);
+            }
+        }
+
+        // Save Attendance Result to Cloud Database
+        async function saveAttendanceLog(name, confidence, statusText, badgeClass) {
+            const timeStr = new Date().toLocaleTimeString();
+            try {
+                await db.collection("attendance_logs").add({
+                    name,
+                    confidence,
+                    time: timeStr,
+                    statusText,
+                    badgeClass,
+                    scannedBy: currentUser.email,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (err) {
+                console.error("Error logging attendance to DB:", err);
+            }
+        }
+
+        // Camera Controls
         async function startCamera() {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = stream;
-                updateStatus("Camera active. Position face and click 'Register Face' or 'Scan Attendance'.", "status-idle");
+                updateStatus("Camera active. Ready for scanning.", "status-idle");
                 
                 btnStart.disabled = true;
-                btnReg.disabled = false;
                 btnScan.disabled = false;
+                btnReg.disabled = false;
                 btnStop.disabled = false;
             } catch (err) {
-                updateStatus("Error: Camera access denied.", "status-danger");
+                updateStatus("Camera access denied.", "status-danger");
             }
         }
 
@@ -140,10 +301,9 @@
                 stream.getTracks().forEach(track => track.stop());
                 video.srcObject = null;
             }
-            updateStatus("Camera stopped.", "status-idle");
-            btnStart.disabled = false;
-            btnReg.disabled = true;
+            btnStart.disabled = !currentUser;
             btnScan.disabled = true;
+            btnReg.disabled = true;
             btnStop.disabled = true;
         }
 
@@ -152,87 +312,56 @@
             statusMessage.className = `status-box ${className}`;
         }
 
-        // Extract 128D Facial Embedding Vector directly from live video frame
         async function getFaceDescriptor() {
-            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+            return await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
                 .withFaceLandmarks()
                 .withFaceDescriptor();
-            return detection;
         }
 
-        // STEP 1: Save actual facial features into memory
-        async function registerFace() {
-            updateStatus("Extracting facial features for registration...", "status-idle");
-            const detection = await getFaceDescriptor();
-
-            if (!detection) {
-                updateStatus("Face unclear or not detected. Adjust lighting/position.", "status-warning");
-                return;
-            }
-
-            const studentName = prompt("Enter Student Name to Register:", "Alex Johnson");
-            if (!studentName) return;
-
-            // Save the unique 128-float embedding vector
-            registeredStudents.push({
-                name: studentName,
-                descriptor: detection.descriptor
-            });
-
-            registeredCount.textContent = registeredStudents.length;
-            updateStatus(`Successfully registered facial profile for "${studentName}"!`, "status-success");
-        }
-
-        // STEP 2: Real AI Scan & Distance Comparison
         async function scanFace() {
             if (registeredStudents.length === 0) {
-                updateStatus("No students registered yet! Click 'Register Face' first.", "status-warning");
+                updateStatus("No registered faces found in Cloud DB.", "status-warning");
                 return;
             }
 
-            updateStatus("Analyzing face vector against database...", "status-idle");
+            updateStatus("Scanning face vector...", "status-idle");
             const detection = await getFaceDescriptor();
 
             if (!detection) {
-                updateStatus("Face unclear or no face detected in camera.", "status-warning");
+                updateStatus("Face unclear or not detected.", "status-warning");
                 return;
             }
 
-            const currentDescriptor = detection.descriptor;
             let bestMatch = null;
-            let lowestDistance = 1.0; // Euclidean Distance Threshold
+            let lowestDistance = 1.0;
 
-            // Compare current face embedding vector to all registered embeddings
             registeredStudents.forEach(student => {
-                const distance = faceapi.euclideanDistance(currentDescriptor, student.descriptor);
+                const distance = faceapi.euclideanDistance(detection.descriptor, student.descriptor);
                 if (distance < lowestDistance) {
                     lowestDistance = distance;
                     bestMatch = student;
                 }
             });
 
-            // Threshold <= 0.5 indicates same person match
-            const MATCH_THRESHOLD = 0.5;
-            if (lowestDistance <= MATCH_THRESHOLD) {
+            if (lowestDistance <= 0.5) {
                 const confidence = Math.round((1 - lowestDistance) * 100);
-                updateStatus(`Identified: ${bestMatch.name} (${confidence}% Similarity)`, "status-success");
-                addLogEntry(bestMatch.name, `${confidence}%`, 'Present', 'badge-present');
+                updateStatus(`Identified: ${bestMatch.name} (${confidence}% Match)`, "status-success");
+                await saveAttendanceLog(bestMatch.name, `${confidence}%`, 'Present', 'badge-present');
             } else {
-                updateStatus("Student not recognised (No embedding match in database).", "status-danger");
-                addLogEntry('Unknown', 'N/A', 'Rejected', 'badge-unknown');
+                updateStatus("Student not recognized.", "status-danger");
+                await saveAttendanceLog('Unknown', 'N/A', 'Rejected', 'badge-unknown');
             }
         }
 
-        function addLogEntry(name, confidence, statusText, badgeClass) {
+        function renderLogEntry(name, confidence, timeStr, statusText, badgeClass) {
             const row = document.createElement('tr');
-            const timeStr = new Date().toLocaleTimeString();
             row.innerHTML = `
                 <td>${name}</td>
                 <td>${confidence}</td>
                 <td>${timeStr}</td>
                 <td><span class="badge ${badgeClass}">${statusText}</span></td>
             `;
-            logTable.prepend(row);
+            logTable.appendChild(row);
         }
     </script>
 </body>
