@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Attendance System - Optimized Detection & Viewport</title>
+    <title>AI Attendance System - Clean Viewport</title>
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -74,10 +74,9 @@
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
         .card-header h3 { font-size: 15px; font-weight: 700; color: var(--text-main); }
         
-        /* Large Viewport Camera UI Container */
+        /* Clean Viewport Camera UI Container */
         .video-wrapper { position: relative; width: 100%; flex: 1; min-height: 300px; background: #090d16; border-radius: var(--radius-md); overflow: hidden; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border-color); }
         video { width: 100%; height: 100%; object-fit: cover; }
-        canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
         
         .controls { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; flex-shrink: 0; }
         button { padding: 11px; border: none; border-radius: var(--radius-md); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: inline-flex; justify-content: center; align-items: center; gap: 6px; }
@@ -175,7 +174,7 @@
         </div>
 
         <div class="main-container">
-            <!-- Left Column: Camera Viewport -->
+            <!-- Left Column: Clean Video Viewport -->
             <div class="card">
                 <div class="card-header">
                     <h3>Live Camera Viewport</h3>
@@ -283,7 +282,6 @@
         const manageStudentsTable = document.getElementById('manage-students-table');
 
         const video = document.getElementById('webcam');
-        const videoWrapper = document.getElementById('video-wrapper');
         const statusMessage = document.getElementById('status-message');
         const modelStatus = document.getElementById('model-status');
         const logTable = document.getElementById('log-table-body');
@@ -301,7 +299,6 @@
         let currentUser = null;
         let registeredStudents = [];
         let unsubscribeLogs = null;
-        let overlayCanvas = null;
         
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
 
@@ -526,44 +523,15 @@
             }
         }
 
-        /* Scaled Detection Core */
+        /* Pure Background Processing (Clean Viewport) */
         async function getFaceDescriptor() {
-            const detection = await faceapi.detectSingleFace(
+            // Processes landmarks & face recognition in background without overlaying visual bounding boxes
+            return await faceapi.detectSingleFace(
                 video, 
                 new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })
             )
             .withFaceLandmarks()
             .withFaceDescriptor();
-
-            if (detection) {
-                drawBoundingBox(detection);
-            } else {
-                clearCanvas();
-            }
-
-            return detection;
-        }
-
-        function drawBoundingBox(detection) {
-            clearCanvas();
-            if (!overlayCanvas) {
-                overlayCanvas = faceapi.createCanvasFromMedia(video);
-                videoWrapper.appendChild(overlayCanvas);
-            }
-
-            const displaySize = { width: video.clientWidth, height: video.clientHeight };
-            faceapi.matchDimensions(overlayCanvas, displaySize);
-
-            const resizedDetection = faceapi.resizeResults(detection, displaySize);
-            faceapi.draw.drawDetections(overlayCanvas, resizedDetection);
-            faceapi.draw.drawFaceLandmarks(overlayCanvas, resizedDetection);
-        }
-
-        function clearCanvas() {
-            if (overlayCanvas) {
-                const ctx = overlayCanvas.getContext('2d');
-                ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-            }
         }
 
         async function registerFace() {
@@ -686,7 +654,6 @@
                 stream.getTracks().forEach(track => track.stop());
                 video.srcObject = null;
             }
-            clearCanvas();
             btnStart.disabled = false;
             btnScan.disabled = true;
             btnReg.disabled = true;
