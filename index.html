@@ -68,9 +68,10 @@
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         .modal-header h3 { color: #1e3c72; }
         .btn-close { background: transparent; border: none; font-size: 20px; font-weight: bold; cursor: pointer; color: #aaa; flex: none; min-width: auto; padding: 0; }
-        .btn-delete { background: #dc3545; color: #fff; padding: 4px 8px; font-size: 11px; border-radius: 3px; border: none; cursor: pointer; flex: none; min-width: auto; }
+        .btn-delete { background: #dc3545; color: #fff; padding: 6px 10px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; flex: none; min-width: auto; }
         .modal-section { margin-bottom: 20px; }
         .modal-section h4 { font-size: 14px; margin-bottom: 8px; color: #495057; }
+        .danger-zone { border-top: 1px solid #f5c6cb; padding-top: 15px; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -170,9 +171,12 @@
                 </table>
             </div>
 
-            <div class="modal-section" style="margin-top: 25px;">
-                <h4>Attendance Logs</h4>
-                <button class="btn-delete" style="padding: 8px 12px; font-size: 12px;" onclick="clearAttendanceLogs()">Clear All Attendance Logs</button>
+            <div class="modal-section danger-zone">
+                <h4 style="color: #dc3545; margin-bottom: 12px;">Database Cleanup Controls</h4>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-delete" style="background: #fd7e14;" onclick="clearAttendanceLogs()">Clear Logs Only</button>
+                    <button class="btn-delete" style="background: #dc3545;" onclick="clearAllData()">⚠️ Clear All Data (Students & Logs)</button>
+                </div>
             </div>
         </div>
     </div>
@@ -397,6 +401,30 @@
                     alert("Attendance logs cleared.");
                 } catch (err) {
                     alert("Error clearing logs: " + err.message);
+                }
+            }
+        }
+
+        async function clearAllData() {
+            if (confirm("⚠️ PERMANENT ACTION:\nAre you sure you want to delete ALL registered student face vectors AND all attendance logs?")) {
+                try {
+                    // Delete all students
+                    const studentsSnapshot = await db.collection("students").get();
+                    const batchStudents = db.batch();
+                    studentsSnapshot.docs.forEach(doc => batchStudents.delete(doc.ref));
+                    await batchStudents.commit();
+
+                    // Delete all attendance logs
+                    const logsSnapshot = await db.collection("attendance_logs").get();
+                    const batchLogs = db.batch();
+                    logsSnapshot.docs.forEach(doc => batchLogs.delete(doc.ref));
+                    await batchLogs.commit();
+
+                    await refreshManageTable();
+                    updateStatus("All database records wiped successfully.", "status-danger");
+                    alert("All student records and attendance logs have been deleted.");
+                } catch (err) {
+                    alert("Error clearing all data: " + err.message);
                 }
             }
         }
