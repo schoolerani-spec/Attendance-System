@@ -15,7 +15,21 @@
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #f4f6f9; color: #333; padding: 20px; }
+        body { background-color: #f4f6f9; color: #333; min-height: 100vh; }
+        
+        /* Landing / Sign-In Overlay Page */
+        .auth-screen { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
+        .auth-card { background: #ffffff; padding: 40px 30px; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .auth-card h1 { font-size: 24px; color: #1e3c72; margin-bottom: 8px; }
+        .auth-card p { font-size: 14px; color: #666; margin-bottom: 25px; }
+        .auth-btn-group { display: flex; flex-direction: column; gap: 12px; }
+        .btn-portal { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        .btn-portal-google { background: #4285F4; color: #fff; }
+        .btn-portal-admin { background: #343a40; color: #fff; }
+        .btn-portal:hover { opacity: 0.9; }
+
+        /* Main Dashboard (Hidden by default until login) */
+        .dashboard { display: none; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fff; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .user-box { display: flex; align-items: center; gap: 10px; }
         .user-avatar { width: 32px; height: 32px; border-radius: 50%; display: none; }
@@ -31,7 +45,7 @@
         .btn-reg { background: #17a2b8; color: #fff; }
         .btn-scan { background: #007bff; color: #fff; }
         .btn-stop { background: #dc3545; color: #fff; }
-        .btn-google { background: #4285F4; color: #fff; padding: 8px 14px; font-size: 12px; border-radius: 4px; display: flex; align-items: center; gap: 6px; }
+        .btn-google { background: #dc3545; color: #fff; padding: 8px 14px; font-size: 12px; border-radius: 4px; }
         button:disabled { background: #cccccc; cursor: not-allowed; }
         
         .status-box { margin-top: 15px; padding: 12px; border-radius: 4px; font-weight: bold; font-size: 14px; text-align: center; }
@@ -50,54 +64,73 @@
 </head>
 <body>
 
-    <div class="header">
-        <div>
-            <h2>AI Attendance System</h2>
-            <small id="model-status">Loading Neural Models & Database...</small>
-        </div>
-        <div class="user-box">
-            <img id="user-photo" class="user-avatar" src="" alt="User Avatar">
-            <span id="user-email" style="font-size: 12px; font-weight: bold; color: #666;">Not Signed In</span>
-            <button id="btn-auth" class="btn-google" onclick="handleGoogleAuth()">Sign In with Google</button>
+    <!-- Initial Landing / Auth Page -->
+    <div id="auth-screen" class="auth-screen">
+        <div class="auth-card">
+            <h1>AI Attendance System</h1>
+            <p>Select your preferred authentication method to access the portal.</p>
+            <div class="auth-btn-group">
+                <button class="btn-portal btn-portal-google" onclick="handleGoogleAuth()">
+                    Sign In with Google
+                </button>
+                <button class="btn-portal btn-portal-admin" onclick="handleAdminAuth()">
+                    Sign In as Admin
+                </button>
+            </div>
         </div>
     </div>
 
-    <div class="main-container">
-        <div class="card">
-            <h3>Live Camera</h3>
-            <div class="video-wrapper">
-                <video id="webcam" autoplay playsinline muted></video>
+    <!-- Main System Dashboard -->
+    <div id="dashboard" class="dashboard">
+        <div class="header">
+            <div>
+                <h2>AI Attendance System</h2>
+                <small id="model-status">Loading Neural Models & Database...</small>
             </div>
-            
-            <div class="controls">
-                <button class="btn-start" id="btn-start" onclick="startCamera()" disabled>Start Camera</button>
-                <button class="btn-scan" id="btn-scan" onclick="scanFace()" disabled>Scan Attendance</button>
-                <button class="btn-reg" id="btn-reg" onclick="registerFace()" disabled>Register Face</button>
-                <button class="btn-stop" id="btn-stop" onclick="stopCamera()" disabled>Stop</button>
-            </div>
-
-            <div id="status-message" class="status-box status-idle">
-                Please sign in with Google to access the system...
+            <div class="user-box">
+                <img id="user-photo" class="user-avatar" src="" alt="User Avatar">
+                <span id="user-email" style="font-size: 12px; font-weight: bold; color: #666;">Not Signed In</span>
+                <button id="btn-auth" class="btn-google" onclick="signOut()">Sign Out</button>
             </div>
         </div>
 
-        <div class="card">
-            <h3>Cloud Database Records</h3>
-            <p style="font-size: 12px; color: #666; margin: 8px 0;">
-                Registered Students in Cloud DB: <strong id="registered-count">0</strong>
-            </p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Confidence</th>
-                        <th>Time</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="log-table-body">
-                </tbody>
-            </table>
+        <div class="main-container">
+            <div class="card">
+                <h3>Live Camera</h3>
+                <div class="video-wrapper">
+                    <video id="webcam" autoplay playsinline muted></video>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn-start" id="btn-start" onclick="startCamera()">Start Camera</button>
+                    <button class="btn-scan" id="btn-scan" onclick="scanFace()" disabled>Scan Attendance</button>
+                    <button class="btn-reg" id="btn-reg" onclick="registerFace()" disabled>Register Face</button>
+                    <button class="btn-stop" id="btn-stop" onclick="stopCamera()" disabled>Stop</button>
+                </div>
+
+                <div id="status-message" class="status-box status-idle">
+                    System ready. Click 'Start Camera'.
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Cloud Database Records</h3>
+                <p style="font-size: 12px; color: #666; margin: 8px 0;">
+                    Registered Students in Cloud DB: <strong id="registered-count">0</strong>
+                </p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Confidence</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-table-body">
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -119,16 +152,18 @@
         const auth = firebase.auth();
         const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-        // Enforce Local Persistence so user state is remembered across reloads
         auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-        // UI Elements & State
+        // UI Views
+        const authScreen = document.getElementById('auth-screen');
+        const dashboard = document.getElementById('dashboard');
+
+        // Elements
         const video = document.getElementById('webcam');
         const statusMessage = document.getElementById('status-message');
         const modelStatus = document.getElementById('model-status');
         const logTable = document.getElementById('log-table-body');
         const registeredCount = document.getElementById('registered-count');
-        const btnAuth = document.getElementById('btn-auth');
         const userEmail = document.getElementById('user-email');
         const userPhoto = document.getElementById('user-photo');
         
@@ -142,74 +177,86 @@
         let registeredStudents = [];
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
 
-        // Load Face API Models
+        // Load AI Models
         window.addEventListener('DOMContentLoaded', async () => {
             try {
                 await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-                
                 modelStatus.textContent = "AI & Models: Ready";
-                if (!currentUser) updateStatus("System ready. Please sign in with Google.", "status-idle");
             } catch (err) {
                 console.error(err);
                 modelStatus.textContent = "AI Error: Failed to load models";
             }
         });
 
-        // Robust Google Auth Handler using Popup Flow
+        // 1. Google Sign-In Flow
         function handleGoogleAuth() {
-            if (currentUser) {
-                auth.signOut().then(() => {
-                    updateStatus("Signed out successfully.", "status-idle");
+            auth.signInWithPopup(googleProvider)
+                .catch((error) => {
+                    console.error("Login Error:", error);
+                    if (error.code === 'auth/popup-blocked') {
+                        alert("Please enable pop-ups in your address bar to sign in.");
+                    } else {
+                        alert("Auth Error: " + error.message);
+                    }
                 });
-            } else {
-                auth.signInWithPopup(googleProvider)
-                    .then((result) => {
-                        console.log("Logged in:", result.user.email);
-                    })
-                    .catch((error) => {
-                        console.error("Login Error:", error);
-                        if (error.code === 'auth/popup-blocked') {
-                            alert("Pop-up blocked by browser! Please allow pop-ups for this site in your address bar.");
-                        } else {
-                            alert("Auth Error: " + error.message);
-                        }
-                    });
-            }
         }
 
-        // Persistent Auth Observer
+        // 2. Admin Sign-In Flow (Prompt for Credentials)
+        function handleAdminAuth() {
+            const email = prompt("Enter Admin Email:");
+            if (!email) return;
+            const password = prompt("Enter Admin Password:");
+            if (!password) return;
+
+            auth.signInWithEmailAndPassword(email, password)
+                .catch((error) => {
+                    alert("Admin Auth Failed: " + error.message);
+                });
+        }
+
+        // 3. Sign Out Function
+        function signOut() {
+            auth.signOut().then(() => {
+                stopCamera();
+            });
+        }
+
+        // Auth Observer to Switch Screen Views
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             if (user) {
+                // Hide Auth Screen & Display Main Dashboard
+                authScreen.style.display = 'none';
+                dashboard.style.display = 'block';
+
                 userEmail.textContent = user.displayName || user.email;
-                userPhoto.src = user.photoURL || '';
-                userPhoto.style.display = 'block';
-                btnAuth.textContent = "Sign Out";
-                btnStart.disabled = false;
-                updateStatus(`Welcome ${user.displayName || 'User'}! Click 'Start Camera'.`, "status-success");
+                if (user.photoURL) {
+                    userPhoto.src = user.photoURL;
+                    userPhoto.style.display = 'block';
+                } else {
+                    userPhoto.style.display = 'none';
+                }
 
                 try {
                     await loadStudentsFromDatabase();
                     listenToAttendanceLogs();
                 } catch (err) {
-                    console.error("Database connection error:", err);
+                    console.error("Cloud DB Read Error:", err);
                 }
             } else {
-                userEmail.textContent = "Not Signed In";
-                userPhoto.style.display = 'none';
-                btnAuth.textContent = "Sign In with Google";
+                // Display Auth Screen & Hide Main Dashboard
+                dashboard.style.display = 'none';
+                authScreen.style.display = 'flex';
                 
-                stopCamera();
-                btnStart.disabled = true;
                 registeredStudents = [];
                 registeredCount.textContent = "0";
                 logTable.innerHTML = "";
             }
         });
 
-        // Load Face Encodings from Firestore DB
+        // Cloud DB Functions
         async function loadStudentsFromDatabase() {
             try {
                 const snapshot = await db.collection("students").get();
@@ -227,7 +274,6 @@
             }
         }
 
-        // Live Realtime Listener for Attendance Logs
         function listenToAttendanceLogs() {
             db.collection("attendance_logs")
               .orderBy("timestamp", "desc")
@@ -241,12 +287,8 @@
               });
         }
 
-        // Register New Face Vector into Database
         async function registerFace() {
-            if (!currentUser) {
-                alert("Please sign in with Google first.");
-                return;
-            }
+            if (!currentUser) return;
 
             updateStatus("Extracting facial vector...", "status-idle");
             const detection = await getFaceDescriptor();
@@ -277,7 +319,6 @@
             }
         }
 
-        // Log Scan Result to Database
         async function saveAttendanceLog(name, confidence, statusText, badgeClass) {
             const timeStr = new Date().toLocaleTimeString();
             try {
@@ -316,7 +357,7 @@
                 stream.getTracks().forEach(track => track.stop());
                 video.srcObject = null;
             }
-            btnStart.disabled = !currentUser;
+            btnStart.disabled = false;
             btnScan.disabled = true;
             btnReg.disabled = true;
             btnStop.disabled = true;
