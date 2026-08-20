@@ -185,7 +185,7 @@
     <div id="manage-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Registered Profiles</h3>
+                <h3 id="modal-title">Registered Profiles</h3>
                 <button class="btn-close" onclick="closeManageModal()">&times;</button>
             </div>
             
@@ -235,6 +235,7 @@
         const authScreen = document.getElementById('auth-screen');
         const dashboard = document.getElementById('dashboard');
         const manageModal = document.getElementById('manage-modal');
+        const modalTitle = document.getElementById('modal-title');
         const manageStudentsTable = document.getElementById('manage-students-table');
 
         const video = document.getElementById('webcam');
@@ -402,9 +403,13 @@
 
         async function refreshManageTable() {
             await loadStudentsFromDatabase();
+            
+            const totalCount = registeredStudents.length;
+            modalTitle.textContent = `Registered Profiles (${totalCount})`;
+            
             manageStudentsTable.innerHTML = "";
             
-            if (registeredStudents.length === 0) {
+            if (totalCount === 0) {
                 manageStudentsTable.innerHTML = `<tr><td colspan="2" style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 15px;">No profiles found.</td></tr>`;
                 return;
             }
