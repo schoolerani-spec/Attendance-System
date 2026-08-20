@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Attendance System - Optimized Detection Engine</title>
+    <title>AI Attendance System</title>
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -58,7 +58,7 @@
         .user-box { display: flex; align-items: center; gap: 10px; }
         .user-avatar { width: 32px; height: 32px; border-radius: 50%; display: none; border: 2px solid var(--primary); }
         
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px; flex-shrink: 0; }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 8px; flex-shrink: 0; }
         .stat-card { background: var(--card-bg); border-radius: var(--radius-md); padding: 10px 16px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }
         .stat-card span { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
         .stat-card h4 { font-size: 20px; font-weight: 700; color: var(--text-main); margin-top: 1px; }
@@ -137,7 +137,7 @@
         <div class="header">
             <div>
                 <h2>Attendance Portal</h2>
-                <small id="model-status">Loading SSD MobileNet + Low-Light Engine...</small>
+                <small id="model-status">Loading neural recognition system...</small>
             </div>
             <div class="user-box">
                 <img id="user-photo" class="user-avatar" src="" alt="User Avatar">
@@ -155,10 +155,6 @@
             <div class="stat-card">
                 <span>Total Logs</span>
                 <h4 id="logs-count">0</h4>
-            </div>
-            <div class="stat-card">
-                <span>Detection Engine</span>
-                <h4 style="font-size: 14px; margin-top: 2px; color: var(--primary);">Fast Single-Pass Low-Light Engine</h4>
             </div>
         </div>
 
@@ -291,16 +287,15 @@
 
         window.addEventListener('DOMContentLoaded', async () => {
             try {
-                // Optimized architecture: Load SSD + Landmarks + Recognition models directly
                 await Promise.all([
                     faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
-                modelStatus.textContent = "Fast SSD Low-Light Engine: Ready";
+                modelStatus.textContent = "System Ready";
             } catch (err) {
                 console.error(err);
-                modelStatus.textContent = "Model Load Error: Check connection to neural model repository.";
+                modelStatus.textContent = "Error loading neural models.";
             }
         });
 
@@ -512,7 +507,6 @@
             }
         }
 
-        /* Fast Pixel Preprocessor: Adaptive Gamma + Contrast Normalization */
         function preprocessLowLight(videoElement) {
             const ctx = processingCanvas.getContext('2d', { willReadFrequently: true });
             const width = videoElement.videoWidth || 640;
@@ -525,7 +519,6 @@
             const imgData = ctx.getImageData(0, 0, width, height);
             const data = imgData.data;
 
-            // Fast subsampled luminance calculation (4x speed boost over full pass)
             let totalLuminance = 0;
             const step = 16; 
             let samples = 0;
@@ -535,7 +528,6 @@
             }
             const avgLuminance = totalLuminance / samples;
 
-            // Low-Light Adjustment
             if (avgLuminance < 90) {
                 const gamma = Math.max(0.35, avgLuminance / 120); 
                 const gain = Math.min(2.5, 120 / Math.max(avgLuminance, 15));
@@ -552,15 +544,13 @@
             return { element: videoElement, lowLightBoosted: false };
         }
 
-        /* Optimized Pattern Detection Pipeline using Fast SSD MobileNet */
         async function getFaceDescriptor() {
             const { element, lowLightBoosted } = preprocessLowLight(video);
 
             if (lowLightBoosted) {
-                updateStatus("Low-light active: Adaptive gain applied...", "status-warning");
+                updateStatus("Low-light detected: Applying adaptive gain...", "status-warning");
             }
 
-            // High-Performance Detector (SSD MobileNet V1)
             const detection = await faceapi.detectSingleFace(
                 element, 
                 new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 })
@@ -577,7 +567,7 @@
             btnReg.disabled = true;
 
             try {
-                updateStatus("Extracting 68-point spatial descriptors...", "status-idle");
+                updateStatus("Extracting spatial descriptors...", "status-idle");
                 const detection = await getFaceDescriptor();
 
                 if (!detection) {
@@ -621,7 +611,7 @@
             btnScan.disabled = true;
 
             try {
-                updateStatus("Analyzing facial geometric patterns...", "status-idle");
+                updateStatus("Analyzing face patterns...", "status-idle");
                 const detection = await getFaceDescriptor();
 
                 if (!detection) {
