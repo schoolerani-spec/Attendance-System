@@ -295,7 +295,7 @@
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
 
-                // Warmup WebGL context during initialization
+                // GPU Warmup pass to eliminate initial delay
                 const dummyCanvas = document.createElement('canvas');
                 dummyCanvas.width = 64;
                 dummyCanvas.height = 64;
@@ -309,12 +309,17 @@
             }
         });
 
-        function handleGoogleAuth() {
-            auth.signInWithPopup(googleProvider)
-                .catch((error) => {
-                    console.error("Login Error:", error);
-                    alert("Google Auth Error: " + error.message + "\n\nEnsure authorized domain is enabled in Firebase Console.");
-                });
+        async function handleGoogleAuth() {
+            try {
+                // Try Popup first, fall back to Redirect if popup context is blocked
+                const result = await auth.signInWithPopup(googleProvider);
+                if (result.user) {
+                    showDashboard(result.user);
+                }
+            } catch (error) {
+                console.warn("Popup blocked or failed. Attempting Auth Redirect...", error);
+                auth.signInWithRedirect(googleProvider);
+            }
         }
 
         async function handleAdminAuth() {
@@ -323,14 +328,34 @@
 
             if (input === adminPassword) {
                 try {
-                    await auth.signInAnonymously();
+                    const result = await auth.signInAnonymously();
+                    if (result.user) {
+                        showDashboard(result.user);
+                    }
                 } catch (error) {
                     console.error("Admin Auth Error:", error);
-                    alert("Admin Sign-In Failed: " + error.message + "\n\nEnsure 'Anonymous' sign-in is enabled in Firebase Console.");
+                    alert("Admin Sign-In Failed: " + error.message + "\n\nEnsure Anonymous Authentication is enabled in Firebase Console.");
                 }
             } else if (input !== null) {
                 alert("Incorrect Admin Passcode!");
             }
+        }
+
+        function showDashboard(user) {
+            currentUser = user;
+            authScreen.style.display = 'none';
+            dashboard.style.display = 'flex';
+
+            userEmail.textContent = user.isAnonymous ? "System Admin" : (user.displayName || user.email || "Authenticated User");
+            if (user.photoURL && !user.isAnonymous) {
+                userPhoto.src = user.photoURL;
+                userPhoto.style.display = 'block';
+            } else {
+                userPhoto.style.display = 'none';
+            }
+
+            loadStudentsFromDatabase().catch(err => console.error(err));
+            listenToAttendanceLogs();
         }
 
         function signOut() {
@@ -344,33 +369,22 @@
             authScreen.style.display = 'flex';
         }
 
-        auth.onAuthStateChanged(async (user) => {
+        // Global Auth state handler
+        auth.onAuthStateChanged((user) => {
             if (user) {
-                currentUser = user;
-                
-                // Immediately transition screen view
-                authScreen.style.display = 'none';
-                dashboard.style.display = 'flex';
-
-                userEmail.textContent = user.isAnonymous ? "System Admin" : (user.displayName || user.email || "Authenticated User");
-                if (user.photoURL && !user.isAnonymous) {
-                    userPhoto.src = user.photoURL;
-                    userPhoto.style.display = 'block';
-                } else {
-                    userPhoto.style.display = 'none';
-                }
-
-                try {
-                    await loadStudentsFromDatabase();
-                    listenToAttendanceLogs();
-                } catch (err) {
-                    console.error("Cloud DB Initialization Error:", err);
-                }
+                showDashboard(user);
             } else {
                 dashboard.style.display = 'none';
                 authScreen.style.display = 'flex';
             }
         });
+
+        // Handle Redirect Sign-In results
+        auth.getRedirectResult().then(result => {
+            if (result && result.user) {
+                showDashboard(result.user);
+            }
+        }).catch(err => console.error("Redirect Error:", err));
 
         async function loadStudentsFromDatabase() {
             if (!currentUser) return;
