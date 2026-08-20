@@ -73,7 +73,12 @@
         .video-wrapper { position: relative; width: 100%; flex: 1; min-height: 300px; background: #090d16; border-radius: var(--radius-md); overflow: hidden; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border-color); }
         video { width: 100%; height: 100%; object-fit: cover; }
         
-        .controls { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; flex-shrink: 0; }
+        /* Control Area Switcher */
+        .controls-wrapper { margin-top: 10px; flex-shrink: 0; min-height: 48px; }
+        .btn-init-fast { width: 100%; padding: 14px; background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%); color: #fff; font-size: 14px; font-weight: 700; border: none; border-radius: var(--radius-md); cursor: pointer; box-shadow: var(--shadow-sm); transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
+        .btn-init-fast:hover { opacity: 0.95; transform: translateY(-1px); }
+        
+        .controls { display: none; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
         button { padding: 11px; border: none; border-radius: var(--radius-md); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: inline-flex; justify-content: center; align-items: center; gap: 6px; }
         button:hover:not(:disabled) { filter: brightness(1.05); }
         
@@ -137,7 +142,7 @@
         <div class="header">
             <div>
                 <h2>Attendance Portal</h2>
-                <small id="model-status">Loading neural recognition system...</small>
+                <small id="model-status">Click 'Initialize AI Engine' to load fast neural models.</small>
             </div>
             <div class="user-box">
                 <img id="user-photo" class="user-avatar" src="" alt="User Avatar">
@@ -167,15 +172,23 @@
                     <video id="webcam" autoplay playsinline muted></video>
                 </div>
                 
-                <div class="controls">
-                    <button class="btn-start" id="btn-start" onclick="startCamera()">Start Camera</button>
-                    <button class="btn-scan" id="btn-scan" onclick="scanFace()" disabled>Scan Face</button>
-                    <button class="btn-reg" id="btn-reg" onclick="registerFace()" disabled>Register Face</button>
-                    <button class="btn-stop" id="btn-stop" onclick="stopCamera()" disabled>Stop</button>
+                <div class="controls-wrapper">
+                    <!-- Fast Init Button (Initial View) -->
+                    <button id="btn-fast-init" class="btn-init-fast" onclick="initializeFastModels()">
+                        ⚡ Initialize AI Engine (Fast Load)
+                    </button>
+
+                    <!-- Hidden Control Grid (Shown after fast loading) -->
+                    <div id="controls-grid" class="controls">
+                        <button class="btn-start" id="btn-start" onclick="startCamera()">Start Camera</button>
+                        <button class="btn-scan" id="btn-scan" onclick="scanFace()" disabled>Scan Face</button>
+                        <button class="btn-reg" id="btn-reg" onclick="registerFace()" disabled>Register Face</button>
+                        <button class="btn-stop" id="btn-stop" onclick="stopCamera()" disabled>Stop</button>
+                    </div>
                 </div>
 
                 <div id="status-message" class="status-box status-idle">
-                    System ready. Click 'Start Camera'.
+                    Click 'Initialize AI Engine' to begin.
                 </div>
             </div>
 
@@ -272,6 +285,8 @@
         const userPhoto = document.getElementById('user-photo');
         const processingCanvas = document.getElementById('processing-canvas');
         
+        const btnFastInit = document.getElementById('btn-fast-init');
+        const controlsGrid = document.getElementById('controls-grid');
         const btnStart = document.getElementById('btn-start');
         const btnReg = document.getElementById('btn-reg');
         const btnScan = document.getElementById('btn-scan');
@@ -285,39 +300,52 @@
         let modelsReady = false;
         
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
-        const ssdOptions = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 });
+        let faceDetectorOptions;
 
-        window.addEventListener('DOMContentLoaded', async () => {
+        // Fast light-weight initializer triggered by button click
+        async function initializeFastModels() {
+            btnFastInit.disabled = true;
+            btnFastInit.textContent = "⏳ Loading Ultra-Fast AI Models...";
+            modelStatus.textContent = "Loading light-weight neural networks...";
+
             try {
+                // Using lightweight Tiny Face Detector for ultra-fast load time
                 await Promise.all([
-                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
 
-                // GPU Warmup pass to eliminate initial delay
+                faceDetectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+
+                // Fast WebGL Context Pre-warmup
                 const dummyCanvas = document.createElement('canvas');
-                dummyCanvas.width = 64;
-                dummyCanvas.height = 64;
-                await faceapi.detectSingleFace(dummyCanvas, ssdOptions);
+                dummyCanvas.width = 32;
+                dummyCanvas.height = 32;
+                await faceapi.detectSingleFace(dummyCanvas, faceDetectorOptions);
 
                 modelsReady = true;
-                modelStatus.textContent = "System Ready";
+                modelStatus.textContent = "System Ready (Fast Engine Active)";
+                updateStatus("System ready. Click 'Start Camera'.", "status-idle");
+
+                // Swap out initialization button for camera control grid
+                btnFastInit.style.display = 'none';
+                controlsGrid.style.display = 'grid';
+
             } catch (err) {
-                console.error("Model initialization failure:", err);
-                modelStatus.textContent = "Error loading neural models.";
+                console.error("Fast model load error:", err);
+                btnFastInit.disabled = false;
+                btnFastInit.textContent = "⚠️ Retry AI Initialization";
+                modelStatus.textContent = "Failed to load models. Check connection.";
+                updateStatus("Error loading models. Click retry.", "status-danger");
             }
-        });
+        }
 
         async function handleGoogleAuth() {
             try {
-                // Try Popup first, fall back to Redirect if popup context is blocked
                 const result = await auth.signInWithPopup(googleProvider);
-                if (result.user) {
-                    showDashboard(result.user);
-                }
+                if (result.user) showDashboard(result.user);
             } catch (error) {
-                console.warn("Popup blocked or failed. Attempting Auth Redirect...", error);
                 auth.signInWithRedirect(googleProvider);
             }
         }
@@ -329,12 +357,9 @@
             if (input === adminPassword) {
                 try {
                     const result = await auth.signInAnonymously();
-                    if (result.user) {
-                        showDashboard(result.user);
-                    }
+                    if (result.user) showDashboard(result.user);
                 } catch (error) {
-                    console.error("Admin Auth Error:", error);
-                    alert("Admin Sign-In Failed: " + error.message + "\n\nEnsure Anonymous Authentication is enabled in Firebase Console.");
+                    alert("Admin Sign-In Failed: " + error.message);
                 }
             } else if (input !== null) {
                 alert("Incorrect Admin Passcode!");
@@ -364,12 +389,17 @@
             currentUser = null;
             stopCamera();
 
-            updateStatus("System ready. Click 'Start Camera'.", "status-idle");
+            modelsReady = false;
+            btnFastInit.style.display = 'flex';
+            btnFastInit.disabled = false;
+            btnFastInit.textContent = "⚡ Initialize AI Engine (Fast Load)";
+            controlsGrid.style.display = 'none';
+
+            updateStatus("Click 'Initialize AI Engine' to begin.", "status-idle");
             dashboard.style.display = 'none';
             authScreen.style.display = 'flex';
         }
 
-        // Global Auth state handler
         auth.onAuthStateChanged((user) => {
             if (user) {
                 showDashboard(user);
@@ -379,11 +409,8 @@
             }
         });
 
-        // Handle Redirect Sign-In results
         auth.getRedirectResult().then(result => {
-            if (result && result.user) {
-                showDashboard(result.user);
-            }
+            if (result && result.user) showDashboard(result.user);
         }).catch(err => console.error("Redirect Error:", err));
 
         async function loadStudentsFromDatabase() {
@@ -584,7 +611,7 @@
                 updateStatus("Low-light detected: Adjusting image boost...", "status-warning");
             }
 
-            const detection = await faceapi.detectSingleFace(element, ssdOptions)
+            const detection = await faceapi.detectSingleFace(element, faceDetectorOptions)
                                            .withFaceLandmarks()
                                            .withFaceDescriptor();
 
@@ -594,7 +621,7 @@
         async function registerFace() {
             if (!currentUser || isProcessing) return;
             if (!modelsReady) {
-                updateStatus("Models initializing. Please wait...", "status-warning");
+                updateStatus("Initialize engine first.", "status-warning");
                 return;
             }
 
@@ -645,7 +672,7 @@
                 return;
             }
             if (!modelsReady) {
-                updateStatus("Models initializing. Please wait...", "status-warning");
+                updateStatus("Initialize engine first.", "status-warning");
                 return;
             }
             if (isProcessing) return;
@@ -674,7 +701,7 @@
                     }
                 }
 
-                if (lowestDistance <= 0.48) {
+                if (lowestDistance <= 0.52) {
                     const confidence = Math.round((1 - lowestDistance) * 100);
                     updateStatus(`Identified: ${bestMatch.name} (${confidence}% Match)`, "status-success");
                     await saveAttendanceLog(bestMatch.name, `${confidence}%`, 'Present', 'badge-present');
