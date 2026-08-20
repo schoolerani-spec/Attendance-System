@@ -5,13 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Attendance System</title>
     
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Face-API.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
-
-    <!-- Firebase SDKs (v10 compat mode) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -22,7 +17,6 @@
             --primary-hover: #4338ca;
             --success: #10b981;
             --info: #0ea5e9;
-            --warning: #f59e0b;
             --danger: #ef4444;
             --bg-main: #f8fafc;
             --card-bg: #ffffff;
@@ -39,58 +33,51 @@
         body { background-color: var(--bg-main); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         
         .auth-screen { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; z-index: 2000; padding: 20px; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
-        .auth-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 36px 28px; border-radius: var(--radius-lg); width: 100%; max-width: 420px; text-align: center; box-shadow: var(--shadow-lg); }
-        .auth-card h1 { font-size: 26px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
-        .auth-card p { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.4; }
+        .auth-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 36px 28px; border-radius: var(--radius-lg); width: 100%; max-width: 400px; text-align: center; box-shadow: var(--shadow-lg); }
+        .auth-card h1 { font-size: 24px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+        .auth-card p { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
         .auth-btn-group { display: flex; flex-direction: column; gap: 12px; }
         
-        .btn-portal { width: 100%; padding: 12px 16px; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        .btn-portal { width: 100%; padding: 12px 16px; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 10px; }
         .btn-portal-google { background: #ffffff; color: var(--text-main); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }
         .btn-portal-google:hover { background: #f8fafc; }
         .btn-portal-admin { background: var(--primary); color: #fff; }
         .btn-portal-admin:hover { background: var(--primary-hover); }
 
-        .dashboard { display: none; width: 100%; max-width: 1440px; margin: 0 auto; height: 100vh; padding: 12px; flex-direction: column; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: var(--card-bg); padding: 10px 18px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); flex-shrink: 0; }
+        .dashboard { display: none; width: 100%; max-width: 1400px; margin: 0 auto; height: 100vh; padding: 16px; flex-direction: column; gap: 16px; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 12px 20px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); flex-shrink: 0; }
         .header h2 { font-size: 18px; font-weight: 700; color: var(--text-main); }
-        .header small { font-size: 12px; color: var(--text-muted); font-weight: 500; }
         
-        .user-box { display: flex; align-items: center; gap: 10px; }
+        .user-box { display: flex; align-items: center; gap: 12px; }
         .user-avatar { width: 32px; height: 32px; border-radius: 50%; display: none; border: 2px solid var(--primary); }
-        
-        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 8px; flex-shrink: 0; }
-        .stat-card { background: var(--card-bg); border-radius: var(--radius-md); padding: 10px 16px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }
-        .stat-card span { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-        .stat-card h4 { font-size: 20px; font-weight: 700; color: var(--text-main); margin-top: 1px; }
 
-        .main-container { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 12px; flex: 1; min-height: 0; }
-        @media (max-width: 992px) { .main-container { grid-template-columns: 1fr; overflow-y: auto; } }
+        .main-container { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; flex: 1; min-height: 0; }
+        @media (max-width: 900px) { .main-container { grid-template-columns: 1fr; overflow-y: auto; } }
         
-        .card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 14px 18px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; min-height: 0; }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
+        .card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; min-height: 0; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
         .card-header h3 { font-size: 15px; font-weight: 700; color: var(--text-main); }
         
-        .video-wrapper { position: relative; width: 100%; flex: 1; min-height: 300px; background: #090d16; border-radius: var(--radius-md); overflow: hidden; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border-color); }
+        .video-wrapper { position: relative; width: 100%; flex: 1; min-height: 280px; background: #0f172a; border-radius: var(--radius-md); overflow: hidden; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border-color); }
         video { width: 100%; height: 100%; object-fit: cover; }
         
-        /* Control Area Switcher */
-        .controls-wrapper { margin-top: 10px; flex-shrink: 0; min-height: 48px; }
+        .controls-wrapper { margin-top: 12px; flex-shrink: 0; }
         .btn-init-fast { width: 100%; padding: 14px; background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%); color: #fff; font-size: 14px; font-weight: 700; border: none; border-radius: var(--radius-md); cursor: pointer; box-shadow: var(--shadow-sm); transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
-        .btn-init-fast:hover { opacity: 0.95; transform: translateY(-1px); }
+        .btn-init-fast:hover { opacity: 0.95; }
         
-        .controls { display: none; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
-        button { padding: 11px; border: none; border-radius: var(--radius-md); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: inline-flex; justify-content: center; align-items: center; gap: 6px; }
+        .controls { display: none; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; }
+        button { padding: 10px 14px; border: none; border-radius: var(--radius-md); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: inline-flex; justify-content: center; align-items: center; gap: 6px; }
         button:hover:not(:disabled) { filter: brightness(1.05); }
         
         .btn-start { background: var(--success); color: #fff; }
         .btn-reg { background: var(--info); color: #fff; }
         .btn-scan { background: var(--primary); color: #fff; }
         .btn-stop { background: var(--danger); color: #fff; }
-        .btn-manage { background: #f1f5f9; color: var(--text-main); border: 1px solid var(--border-color); font-size: 12px; padding: 6px 12px; }
-        .btn-google { background: var(--danger); color: #fff; font-size: 12px; padding: 6px 12px; }
+        .btn-secondary { background: #f1f5f9; color: var(--text-main); border: 1px solid var(--border-color); font-size: 12px; padding: 6px 12px; }
+        .btn-danger-sm { background: #fee2e2; color: var(--danger); font-size: 12px; padding: 6px 12px; }
         button:disabled { background: #e2e8f0 !important; color: #94a3b8 !important; cursor: not-allowed; }
         
-        .status-box { margin-top: 8px; padding: 10px; border-radius: var(--radius-md); font-weight: 600; font-size: 13px; text-align: center; flex-shrink: 0; }
+        .status-box { margin-top: 10px; padding: 10px; border-radius: var(--radius-md); font-weight: 600; font-size: 13px; text-align: center; flex-shrink: 0; }
         .status-idle { background: #f1f5f9; color: var(--text-muted); }
         .status-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
         .status-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
@@ -98,25 +85,23 @@
 
         .table-container { flex: 1; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); min-height: 0; }
         table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        th, td { text-align: left; padding: 11px 14px; font-size: 13px; }
-        th { background: #f8fafc; color: var(--text-muted); font-weight: 700; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 10; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        th, td { text-align: left; padding: 10px 12px; font-size: 13px; }
+        th { background: #f8fafc; color: var(--text-muted); font-weight: 700; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 10; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
         td { border-bottom: 1px solid var(--border-color); color: var(--text-main); }
         tbody tr:hover td { background: #f8fafc; }
 
-        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-block; }
+        .badge { padding: 4px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
         .badge-present { background: #d1fae5; color: #065f46; }
         .badge-unknown { background: #fee2e2; color: #991b1b; }
 
-        tr.date-separator td { border-top: 6px solid var(--bg-main); padding-top: 10px; }
-
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: var(--card-bg); padding: 22px; border-radius: var(--radius-lg); width: 90%; max-width: 560px; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--border-color); }
+        .modal-content { background: var(--card-bg); padding: 20px; border-radius: var(--radius-lg); width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--border-color); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
-        .modal-header h3 { font-size: 17px; font-weight: 700; color: var(--text-main); }
+        .modal-header h3 { font-size: 16px; font-weight: 700; color: var(--text-main); }
         .btn-close { background: transparent; border: none; font-size: 20px; font-weight: bold; cursor: pointer; color: var(--text-muted); }
-        .btn-delete { background: var(--danger); color: #fff; padding: 6px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; }
+        .btn-delete { background: var(--danger); color: #fff; padding: 4px 8px; font-size: 11px; border-radius: 4px; border: none; cursor: pointer; }
         .modal-section { margin-bottom: 16px; }
-        .modal-section h4 { font-size: 12px; font-weight: 700; margin-bottom: 8px; color: var(--text-muted); text-transform: uppercase; }
+        .modal-section h4 { font-size: 11px; font-weight: 700; margin-bottom: 8px; color: var(--text-muted); text-transform: uppercase; }
         .danger-zone { border-top: 1px solid var(--border-color); padding-top: 14px; margin-top: 14px; }
     </style>
 </head>
@@ -125,7 +110,7 @@
     <div id="auth-screen" class="auth-screen">
         <div class="auth-card">
             <h1>AI Attendance</h1>
-            <p>Select an authentication method below to open your cloud database.</p>
+            <p>Sign in to launch your session</p>
             <div class="auth-btn-group">
                 <button class="btn-portal btn-portal-google" onclick="handleGoogleAuth()">
                     <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
@@ -140,45 +125,29 @@
 
     <div id="dashboard" class="dashboard">
         <div class="header">
-            <div>
-                <h2>Attendance Portal</h2>
-                <small id="model-status">Click 'Initialize AI Engine' to load fast neural models.</small>
-            </div>
+            <h2>Attendance Portal</h2>
             <div class="user-box">
                 <img id="user-photo" class="user-avatar" src="" alt="User Avatar">
                 <span id="user-email" style="font-size: 13px; font-weight: 600; color: var(--text-main);">Not Signed In</span>
-                <button class="btn-manage" onclick="openManageModal()">Manage Data</button>
-                <button id="btn-auth" class="btn-google" onclick="signOut()">Sign Out</button>
-            </div>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <span>Registered Faces</span>
-                <h4 id="registered-count">0</h4>
-            </div>
-            <div class="stat-card">
-                <span>Total Logs</span>
-                <h4 id="logs-count">0</h4>
+                <button class="btn-secondary" onclick="openManageModal()">Manage Faces</button>
+                <button class="btn-danger-sm" onclick="signOut()">Sign Out</button>
             </div>
         </div>
 
         <div class="main-container">
             <div class="card">
                 <div class="card-header">
-                    <h3>Live Camera Viewport</h3>
+                    <h3>Camera Feed</h3>
                 </div>
-                <div class="video-wrapper" id="video-wrapper">
+                <div class="video-wrapper">
                     <video id="webcam" autoplay playsinline muted></video>
                 </div>
                 
                 <div class="controls-wrapper">
-                    <!-- Fast Init Button (Initial View) -->
                     <button id="btn-fast-init" class="btn-init-fast" onclick="initializeFastModels()">
-                        ⚡ Initialize AI Engine (Fast Load)
+                        ⚡ Initialize AI Engine
                     </button>
 
-                    <!-- Hidden Control Grid (Shown after fast loading) -->
                     <div id="controls-grid" class="controls">
                         <button class="btn-start" id="btn-start" onclick="startCamera()">Start Camera</button>
                         <button class="btn-scan" id="btn-scan" onclick="scanFace()" disabled>Scan Face</button>
@@ -188,7 +157,7 @@
                 </div>
 
                 <div id="status-message" class="status-box status-idle">
-                    Click 'Initialize AI Engine' to begin.
+                    Initialize AI Engine to start scanning.
                 </div>
             </div>
 
@@ -200,9 +169,7 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Date</th>
                                 <th>Name</th>
-                                <th>Match</th>
                                 <th>Time</th>
                                 <th>Status</th>
                             </tr>
@@ -218,33 +185,31 @@
     <div id="manage-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Manage Saved Database Data</h3>
+                <h3>Registered Profiles</h3>
                 <button class="btn-close" onclick="closeManageModal()">&times;</button>
             </div>
             
             <div class="modal-section">
-                <h4>Registered Students</h4>
                 <div class="table-container" style="max-height: 200px;">
                     <table>
                         <thead>
                             <tr>
                                 <th>Name</th>
-                                <th>Created By</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="manage-students-table">
-                            <tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 15px;">Loading...</td></tr>
+                            <tr><td colspan="2" style="text-align: center; color: var(--text-muted); padding: 15px;">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
             <div class="modal-section danger-zone">
-                <h4 style="color: var(--danger); margin-bottom: 8px;">Database Cleanup Controls</h4>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button class="btn-delete" style="background: var(--warning);" onclick="clearAttendanceLogs()">Clear Logs Only</button>
-                    <button class="btn-delete" style="background: var(--danger);" onclick="clearAllData()">⚠️ Clear All Data</button>
+                <h4>Database Management</h4>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-secondary" onclick="clearAttendanceLogs()">Clear Logs</button>
+                    <button class="btn-delete" onclick="clearAllData()">Wipe All Data</button>
                 </div>
             </div>
         </div>
@@ -259,16 +224,13 @@
             projectId: "attendance-app-d3fc2",
             storageBucket: "attendance-app-d3fc2.firebasestorage.app",
             messagingSenderId: "850381295049",
-            appId: "1:850381295049:web:b59a8d08e872de55d72c18",
-            measurementId: "G-ZZ942T9W9Y"
+            appId: "1:850381295049:web:b59a8d08e872de55d72c18"
         };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
         const googleProvider = new firebase.auth.GoogleAuthProvider();
-
-        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => console.warn(err));
 
         const authScreen = document.getElementById('auth-screen');
         const dashboard = document.getElementById('dashboard');
@@ -277,10 +239,7 @@
 
         const video = document.getElementById('webcam');
         const statusMessage = document.getElementById('status-message');
-        const modelStatus = document.getElementById('model-status');
         const logTable = document.getElementById('log-table-body');
-        const registeredCount = document.getElementById('registered-count');
-        const logsCount = document.getElementById('logs-count');
         const userEmail = document.getElementById('user-email');
         const userPhoto = document.getElementById('user-photo');
         const processingCanvas = document.getElementById('processing-canvas');
@@ -302,14 +261,11 @@
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
         let faceDetectorOptions;
 
-        // Fast light-weight initializer triggered by button click
         async function initializeFastModels() {
             btnFastInit.disabled = true;
-            btnFastInit.textContent = "⏳ Loading Ultra-Fast AI Models...";
-            modelStatus.textContent = "Loading light-weight neural networks...";
+            btnFastInit.textContent = "⌛ Loading Models...";
 
             try {
-                // Using lightweight Tiny Face Detector for ultra-fast load time
                 await Promise.all([
                     faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -318,26 +274,16 @@
 
                 faceDetectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
 
-                // Fast WebGL Context Pre-warmup
-                const dummyCanvas = document.createElement('canvas');
-                dummyCanvas.width = 32;
-                dummyCanvas.height = 32;
-                await faceapi.detectSingleFace(dummyCanvas, faceDetectorOptions);
-
                 modelsReady = true;
-                modelStatus.textContent = "System Ready (Fast Engine Active)";
-                updateStatus("System ready. Click 'Start Camera'.", "status-idle");
+                updateStatus("Engine Ready. Click 'Start Camera'.", "status-idle");
 
-                // Swap out initialization button for camera control grid
                 btnFastInit.style.display = 'none';
                 controlsGrid.style.display = 'grid';
 
             } catch (err) {
-                console.error("Fast model load error:", err);
                 btnFastInit.disabled = false;
-                btnFastInit.textContent = "⚠️ Retry AI Initialization";
-                modelStatus.textContent = "Failed to load models. Check connection.";
-                updateStatus("Error loading models. Click retry.", "status-danger");
+                btnFastInit.textContent = "⚡ Initialize AI Engine";
+                updateStatus("Error loading models. Please retry.", "status-danger");
             }
         }
 
@@ -359,10 +305,10 @@
                     const result = await auth.signInAnonymously();
                     if (result.user) showDashboard(result.user);
                 } catch (error) {
-                    alert("Admin Sign-In Failed: " + error.message);
+                    alert("Admin Sign-In Failed");
                 }
             } else if (input !== null) {
-                alert("Incorrect Admin Passcode!");
+                alert("Incorrect Passcode!");
             }
         }
 
@@ -371,7 +317,7 @@
             authScreen.style.display = 'none';
             dashboard.style.display = 'flex';
 
-            userEmail.textContent = user.isAnonymous ? "System Admin" : (user.displayName || user.email || "Authenticated User");
+            userEmail.textContent = user.isAnonymous ? "Admin" : (user.displayName || user.email);
             if (user.photoURL && !user.isAnonymous) {
                 userPhoto.src = user.photoURL;
                 userPhoto.style.display = 'block';
@@ -392,10 +338,10 @@
             modelsReady = false;
             btnFastInit.style.display = 'flex';
             btnFastInit.disabled = false;
-            btnFastInit.textContent = "⚡ Initialize AI Engine (Fast Load)";
+            btnFastInit.textContent = "⚡ Initialize AI Engine";
             controlsGrid.style.display = 'none';
 
-            updateStatus("Click 'Initialize AI Engine' to begin.", "status-idle");
+            updateStatus("Initialize AI Engine to start scanning.", "status-idle");
             dashboard.style.display = 'none';
             authScreen.style.display = 'flex';
         }
@@ -409,30 +355,21 @@
             }
         });
 
-        auth.getRedirectResult().then(result => {
-            if (result && result.user) showDashboard(result.user);
-        }).catch(err => console.error("Redirect Error:", err));
-
         async function loadStudentsFromDatabase() {
             if (!currentUser) return;
             try {
-                const snapshot = await db.collection("users")
-                                         .doc(currentUser.uid)
-                                         .collection("students")
-                                         .get();
+                const snapshot = await db.collection("users").doc(currentUser.uid).collection("students").get();
                 registeredStudents = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     registeredStudents.push({
                         id: doc.id,
                         name: data.name,
-                        createdBy: data.createdBy || (currentUser.isAnonymous ? 'Admin' : currentUser.email),
                         descriptor: new Float32Array(data.descriptor)
                     });
                 });
-                registeredCount.textContent = registeredStudents.length;
             } catch (err) {
-                console.error("Cloud DB Read Error:", err);
+                console.error(err);
             }
         }
 
@@ -444,28 +381,13 @@
               .doc(currentUser.uid)
               .collection("attendance_logs")
               .orderBy("timestamp", "desc")
-              .limit(50)
+              .limit(30)
               .onSnapshot(snapshot => {
                   logTable.innerHTML = "";
-                  let lastDate = null;
-                  logsCount.textContent = snapshot.size;
-
                   snapshot.forEach(doc => {
                       const log = doc.data();
-                      let dateStr = log.date;
-                      if (!dateStr && log.timestamp) {
-                          dateStr = log.timestamp.toDate().toLocaleDateString();
-                      } else if (!dateStr) {
-                          dateStr = new Date().toLocaleDateString();
-                      }
-
-                      const isNewDate = (lastDate !== null && lastDate !== dateStr);
-                      lastDate = dateStr;
-
-                      renderLogEntry(dateStr, log.name, log.confidence, log.time, log.statusText, log.badgeClass, isNewDate);
+                      renderLogEntry(log.name, log.time, log.statusText, log.badgeClass);
                   });
-              }, err => {
-                  console.error("Log subscription error:", err);
               });
         }
 
@@ -483,7 +405,7 @@
             manageStudentsTable.innerHTML = "";
             
             if (registeredStudents.length === 0) {
-                manageStudentsTable.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 15px;">No registered students found.</td></tr>`;
+                manageStudentsTable.innerHTML = `<tr><td colspan="2" style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 15px;">No profiles found.</td></tr>`;
                 return;
             }
 
@@ -491,7 +413,6 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${student.name}</strong></td>
-                    <td>${student.createdBy}</td>
                     <td><button class="btn-delete" onclick="deleteStudent('${student.id}', '${student.name}')">Delete</button></td>
                 `;
                 manageStudentsTable.appendChild(tr);
@@ -500,166 +421,80 @@
 
         async function deleteStudent(docId, name) {
             if (!currentUser) return;
-            if (confirm(`Are you sure you want to delete "${name}" from Cloud DB?`)) {
+            if (confirm(`Delete profile for "${name}"?`)) {
                 try {
-                    await db.collection("users")
-                            .doc(currentUser.uid)
-                            .collection("students")
-                            .doc(docId)
-                            .delete();
+                    await db.collection("users").doc(currentUser.uid).collection("students").doc(docId).delete();
                     await refreshManageTable();
-                    updateStatus(`Deleted "${name}" successfully.`, "status-success");
                 } catch (err) {
-                    alert("Error deleting student: " + err.message);
+                    alert("Error deleting student.");
                 }
             }
         }
 
         async function clearAttendanceLogs() {
             if (!currentUser) return;
-            if (confirm("Are you sure you want to delete all attendance logs?")) {
-                try {
-                    const snapshot = await db.collection("users")
-                                             .doc(currentUser.uid)
-                                             .collection("attendance_logs")
-                                             .get();
-                    const batch = db.batch();
-                    snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                    await batch.commit();
-                    alert("Attendance logs cleared.");
-                } catch (err) {
-                    alert("Error clearing logs: " + err.message);
-                }
+            if (confirm("Delete all attendance logs?")) {
+                const snapshot = await db.collection("users").doc(currentUser.uid).collection("attendance_logs").get();
+                const batch = db.batch();
+                snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
             }
         }
 
         async function clearAllData() {
             if (!currentUser) return;
-            if (confirm("⚠️ PERMANENT ACTION:\nDelete ALL registered face vectors AND all attendance records?")) {
-                try {
-                    const studentsSnapshot = await db.collection("users")
-                                                     .doc(currentUser.uid)
-                                                     .collection("students")
-                                                     .get();
-                    const batchStudents = db.batch();
-                    studentsSnapshot.docs.forEach(doc => batchStudents.delete(doc.ref));
-                    await batchStudents.commit();
+            if (confirm("Permanently delete ALL registered profiles and logs?")) {
+                const sSnap = await db.collection("users").doc(currentUser.uid).collection("students").get();
+                const b1 = db.batch();
+                sSnap.docs.forEach(doc => b1.delete(doc.ref));
+                await b1.commit();
 
-                    const logsSnapshot = await db.collection("users")
-                                                 .doc(currentUser.uid)
-                                                 .collection("attendance_logs")
-                                                 .get();
-                    const batchLogs = db.batch();
-                    logsSnapshot.docs.forEach(doc => batchLogs.delete(doc.ref));
-                    await batchLogs.commit();
+                const lSnap = await db.collection("users").doc(currentUser.uid).collection("attendance_logs").get();
+                const b2 = db.batch();
+                lSnap.docs.forEach(doc => b2.delete(doc.ref));
+                await b2.commit();
 
-                    await refreshManageTable();
-                    updateStatus("All database records wiped successfully.", "status-danger");
-                    alert("All student records and attendance logs have been deleted.");
-                } catch (err) {
-                    alert("Error clearing all data: " + err.message);
-                }
+                await refreshManageTable();
             }
-        }
-
-        function preprocessLowLight(videoElement) {
-            const width = videoElement.videoWidth || 640;
-            const height = videoElement.videoHeight || 480;
-            
-            if (processingCanvas.width !== width || processingCanvas.height !== height) {
-                processingCanvas.width = width;
-                processingCanvas.height = height;
-            }
-
-            const ctx = processingCanvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(videoElement, 0, 0, width, height);
-            const imgData = ctx.getImageData(0, 0, width, height);
-            const data = imgData.data;
-
-            let totalLuminance = 0;
-            const step = 32;
-            let samples = 0;
-            
-            for (let i = 0; i < data.length; i += step) {
-                totalLuminance += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                samples++;
-            }
-            const avgLuminance = totalLuminance / samples;
-
-            if (avgLuminance < 85) {
-                const gamma = Math.max(0.4, avgLuminance / 120); 
-                const gain = Math.min(2.2, 120 / Math.max(avgLuminance, 15));
-
-                for (let i = 0; i < data.length; i += 4) {
-                    data[i] = Math.min(255, Math.pow(data[i] / 255, gamma) * 255 * gain);
-                    data[i + 1] = Math.min(255, Math.pow(data[i + 1] / 255, gamma) * 255 * gain);
-                    data[i + 2] = Math.min(255, Math.pow(data[i + 2] / 255, gamma) * 255 * gain);
-                }
-                ctx.putImageData(imgData, 0, 0);
-                return { element: processingCanvas, lowLightBoosted: true };
-            }
-
-            return { element: videoElement, lowLightBoosted: false };
         }
 
         async function getFaceDescriptor() {
             if (!modelsReady) return null;
-
-            const { element, lowLightBoosted } = preprocessLowLight(video);
-
-            if (lowLightBoosted) {
-                updateStatus("Low-light detected: Adjusting image boost...", "status-warning");
-            }
-
-            const detection = await faceapi.detectSingleFace(element, faceDetectorOptions)
-                                           .withFaceLandmarks()
-                                           .withFaceDescriptor();
-
-            return detection;
+            return await faceapi.detectSingleFace(video, faceDetectorOptions)
+                                .withFaceLandmarks()
+                                .withFaceDescriptor();
         }
 
         async function registerFace() {
             if (!currentUser || isProcessing) return;
-            if (!modelsReady) {
-                updateStatus("Initialize engine first.", "status-warning");
-                return;
-            }
-
             isProcessing = true;
             btnReg.disabled = true;
 
             try {
-                updateStatus("Extracting face features...", "status-idle");
+                updateStatus("Analyzing face...", "status-idle");
                 const detection = await getFaceDescriptor();
 
                 if (!detection) {
-                    updateStatus("No face detected. Adjust lighting or camera angle.", "status-warning");
+                    updateStatus("Face not detected. Try moving closer.", "status-warning");
                     return;
                 }
 
-                const studentName = prompt("Enter Student Name:");
+                const studentName = prompt("Enter Person's Name:");
                 if (!studentName || !studentName.trim()) {
-                    updateStatus("Registration cancelled.", "status-idle");
+                    updateStatus("Cancelled.", "status-idle");
                     return;
                 }
 
-                const descriptorArray = Array.from(detection.descriptor);
-
-                await db.collection("users")
-                        .doc(currentUser.uid)
-                        .collection("students")
-                        .add({
-                            name: studentName.trim(),
-                            descriptor: descriptorArray,
-                            createdBy: currentUser.isAnonymous ? 'Admin' : currentUser.email,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
+                await db.collection("users").doc(currentUser.uid).collection("students").add({
+                    name: studentName.trim(),
+                    descriptor: Array.from(detection.descriptor),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
 
                 await loadStudentsFromDatabase();
-                updateStatus(`Saved "${studentName}" to Cloud Database!`, "status-success");
+                updateStatus(`Saved "${studentName}" successfully!`, "status-success");
             } catch (err) {
-                updateStatus("Failed to save face profile to DB.", "status-danger");
-                console.error(err);
+                updateStatus("Failed to register face.", "status-danger");
             } finally {
                 isProcessing = false;
                 btnReg.disabled = false;
@@ -668,11 +503,7 @@
 
         async function scanFace() {
             if (registeredStudents.length === 0) {
-                updateStatus("No registered faces found in Cloud DB.", "status-warning");
-                return;
-            }
-            if (!modelsReady) {
-                updateStatus("Initialize engine first.", "status-warning");
+                updateStatus("No registered faces found.", "status-warning");
                 return;
             }
             if (isProcessing) return;
@@ -681,11 +512,11 @@
             btnScan.disabled = true;
 
             try {
-                updateStatus("Analyzing face match...", "status-idle");
+                updateStatus("Scanning face...", "status-idle");
                 const detection = await getFaceDescriptor();
 
                 if (!detection) {
-                    updateStatus("Face unclear or not detected.", "status-warning");
+                    updateStatus("No face detected.", "status-warning");
                     return;
                 }
 
@@ -702,65 +533,44 @@
                 }
 
                 if (lowestDistance <= 0.52) {
-                    const confidence = Math.round((1 - lowestDistance) * 100);
-                    updateStatus(`Identified: ${bestMatch.name} (${confidence}% Match)`, "status-success");
-                    await saveAttendanceLog(bestMatch.name, `${confidence}%`, 'Present', 'badge-present');
+                    updateStatus(`Matched: ${bestMatch.name}`, "status-success");
+                    await saveAttendanceLog(bestMatch.name, 'Present', 'badge-present');
                 } else {
-                    updateStatus("Face not recognized. Threshold not met.", "status-danger");
-                    await saveAttendanceLog('Unknown', 'N/A', 'Rejected', 'badge-unknown');
+                    updateStatus("Unknown Face", "status-danger");
+                    await saveAttendanceLog('Unknown', 'Rejected', 'badge-unknown');
                 }
             } catch (err) {
-                console.error(err);
-                updateStatus("Error during scanning pipeline.", "status-danger");
+                updateStatus("Scan error.", "status-danger");
             } finally {
                 isProcessing = false;
                 btnScan.disabled = false;
             }
         }
 
-        async function saveAttendanceLog(name, confidence, statusText, badgeClass) {
+        async function saveAttendanceLog(name, statusText, badgeClass) {
             if (!currentUser) return;
             const now = new Date();
-            const timeStr = now.toLocaleTimeString();
-            const dateStr = now.toLocaleDateString();
-
-            try {
-                await db.collection("users")
-                        .doc(currentUser.uid)
-                        .collection("attendance_logs")
-                        .add({
-                            name,
-                            confidence,
-                            date: dateStr,
-                            time: timeStr,
-                            statusText,
-                            badgeClass,
-                            scannedBy: currentUser.isAnonymous ? 'Admin' : currentUser.email,
-                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-            } catch (err) {
-                console.error("Error logging attendance:", err);
-            }
+            await db.collection("users").doc(currentUser.uid).collection("attendance_logs").add({
+                name,
+                time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                statusText,
+                badgeClass,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
         }
 
         async function startCamera() {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        width: { ideal: 1280 }, 
-                        height: { ideal: 720 }, 
-                        facingMode: "user"
-                    } 
-                });
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 video.srcObject = stream;
-                updateStatus("Camera active. Ready for scanning.", "status-idle");
+                updateStatus("Camera active.", "status-idle");
                 
                 btnStart.disabled = true;
                 btnScan.disabled = false;
                 btnReg.disabled = false;
                 btnStop.disabled = false;
             } catch (err) {
-                updateStatus("Camera permission denied or camera missing.", "status-danger");
+                updateStatus("Camera access denied.", "status-danger");
             }
         }
 
@@ -780,15 +590,10 @@
             statusMessage.className = `status-box ${className}`;
         }
 
-        function renderLogEntry(dateStr, name, confidence, timeStr, statusText, badgeClass, isNewDate) {
+        function renderLogEntry(name, timeStr, statusText, badgeClass) {
             const row = document.createElement('tr');
-            if (isNewDate) {
-                row.classList.add('date-separator');
-            }
             row.innerHTML = `
-                <td><strong>${dateStr}</strong></td>
-                <td>${name}</td>
-                <td>${confidence}</td>
+                <td><strong>${name}</strong></td>
                 <td>${timeStr}</td>
                 <td><span class="badge ${badgeClass}">${statusText}</span></td>
             `;
