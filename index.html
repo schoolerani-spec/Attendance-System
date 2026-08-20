@@ -255,7 +255,7 @@
         const auth = firebase.auth();
         const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => console.warn(err));
 
         const authScreen = document.getElementById('auth-screen');
         const dashboard = document.getElementById('dashboard');
@@ -285,20 +285,17 @@
         let modelsReady = false;
         
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
-
-        // Direct options instance to avoid garbage collection lag
         const ssdOptions = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 });
 
         window.addEventListener('DOMContentLoaded', async () => {
             try {
-                // 1. Load Neural Networks
                 await Promise.all([
                     faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
 
-                // 2. Warm up WebGL GPU Context to remove first-click compilation delay
+                // Warmup WebGL context during initialization
                 const dummyCanvas = document.createElement('canvas');
                 dummyCanvas.width = 64;
                 dummyCanvas.height = 64;
@@ -316,7 +313,7 @@
             auth.signInWithPopup(googleProvider)
                 .catch((error) => {
                     console.error("Login Error:", error);
-                    alert("Auth Error: " + error.message);
+                    alert("Google Auth Error: " + error.message + "\n\nEnsure authorized domain is enabled in Firebase Console.");
                 });
         }
 
@@ -328,7 +325,8 @@
                 try {
                     await auth.signInAnonymously();
                 } catch (error) {
-                    alert("Admin Authentication Error: " + error.message);
+                    console.error("Admin Auth Error:", error);
+                    alert("Admin Sign-In Failed: " + error.message + "\n\nEnsure 'Anonymous' sign-in is enabled in Firebase Console.");
                 }
             } else if (input !== null) {
                 alert("Incorrect Admin Passcode!");
@@ -337,9 +335,7 @@
 
         function signOut() {
             if (unsubscribeLogs) unsubscribeLogs();
-            if (auth.currentUser) {
-                auth.signOut();
-            }
+            auth.signOut();
             currentUser = null;
             stopCamera();
 
@@ -351,10 +347,12 @@
         auth.onAuthStateChanged(async (user) => {
             if (user) {
                 currentUser = user;
+                
+                // Immediately transition screen view
                 authScreen.style.display = 'none';
                 dashboard.style.display = 'flex';
 
-                userEmail.textContent = user.isAnonymous ? "System Admin" : (user.displayName || user.email);
+                userEmail.textContent = user.isAnonymous ? "System Admin" : (user.displayName || user.email || "Authenticated User");
                 if (user.photoURL && !user.isAnonymous) {
                     userPhoto.src = user.photoURL;
                     userPhoto.style.display = 'block';
@@ -366,8 +364,11 @@
                     await loadStudentsFromDatabase();
                     listenToAttendanceLogs();
                 } catch (err) {
-                    console.error("Cloud DB Error:", err);
+                    console.error("Cloud DB Initialization Error:", err);
                 }
+            } else {
+                dashboard.style.display = 'none';
+                authScreen.style.display = 'flex';
             }
         });
 
@@ -520,7 +521,6 @@
             }
         }
 
-        // Fast pixel preprocessing for low-light scenes
         function preprocessLowLight(videoElement) {
             const width = videoElement.videoWidth || 640;
             const height = videoElement.videoHeight || 480;
@@ -536,7 +536,7 @@
             const data = imgData.data;
 
             let totalLuminance = 0;
-            const step = 32; // Optimized sampling rate for zero lag
+            const step = 32;
             let samples = 0;
             
             for (let i = 0; i < data.length; i += step) {
@@ -651,7 +651,6 @@
                 let bestMatch = null;
                 let lowestDistance = 1.0;
 
-                // High-efficiency distance comparison loop
                 for (let i = 0; i < registeredStudents.length; i++) {
                     const student = registeredStudents[i];
                     const distance = faceapi.euclideanDistance(detection.descriptor, student.descriptor);
