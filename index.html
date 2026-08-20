@@ -282,19 +282,32 @@
         let registeredStudents = [];
         let unsubscribeLogs = null;
         let isProcessing = false;
+        let modelsReady = false;
         
         const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
 
+        // Direct options instance to avoid garbage collection lag
+        const ssdOptions = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 });
+
         window.addEventListener('DOMContentLoaded', async () => {
             try {
+                // 1. Load Neural Networks
                 await Promise.all([
                     faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
+
+                // 2. Warm up WebGL GPU Context to remove first-click compilation delay
+                const dummyCanvas = document.createElement('canvas');
+                dummyCanvas.width = 64;
+                dummyCanvas.height = 64;
+                await faceapi.detectSingleFace(dummyCanvas, ssdOptions);
+
+                modelsReady = true;
                 modelStatus.textContent = "System Ready";
             } catch (err) {
-                console.error(err);
+                console.error("Model initialization failure:", err);
                 modelStatus.textContent = "Error loading neural models.";
             }
         });
@@ -507,30 +520,34 @@
             }
         }
 
+        // Fast pixel preprocessing for low-light scenes
         function preprocessLowLight(videoElement) {
-            const ctx = processingCanvas.getContext('2d', { willReadFrequently: true });
             const width = videoElement.videoWidth || 640;
             const height = videoElement.videoHeight || 480;
             
-            processingCanvas.width = width;
-            processingCanvas.height = height;
+            if (processingCanvas.width !== width || processingCanvas.height !== height) {
+                processingCanvas.width = width;
+                processingCanvas.height = height;
+            }
 
+            const ctx = processingCanvas.getContext('2d', { willReadFrequently: true });
             ctx.drawImage(videoElement, 0, 0, width, height);
             const imgData = ctx.getImageData(0, 0, width, height);
             const data = imgData.data;
 
             let totalLuminance = 0;
-            const step = 16; 
+            const step = 32; // Optimized sampling rate for zero lag
             let samples = 0;
+            
             for (let i = 0; i < data.length; i += step) {
                 totalLuminance += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
                 samples++;
             }
             const avgLuminance = totalLuminance / samples;
 
-            if (avgLuminance < 90) {
-                const gamma = Math.max(0.35, avgLuminance / 120); 
-                const gain = Math.min(2.5, 120 / Math.max(avgLuminance, 15));
+            if (avgLuminance < 85) {
+                const gamma = Math.max(0.4, avgLuminance / 120); 
+                const gain = Math.min(2.2, 120 / Math.max(avgLuminance, 15));
 
                 for (let i = 0; i < data.length; i += 4) {
                     data[i] = Math.min(255, Math.pow(data[i] / 255, gamma) * 255 * gain);
@@ -545,29 +562,33 @@
         }
 
         async function getFaceDescriptor() {
+            if (!modelsReady) return null;
+
             const { element, lowLightBoosted } = preprocessLowLight(video);
 
             if (lowLightBoosted) {
-                updateStatus("Low-light detected: Applying adaptive gain...", "status-warning");
+                updateStatus("Low-light detected: Adjusting image boost...", "status-warning");
             }
 
-            const detection = await faceapi.detectSingleFace(
-                element, 
-                new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 })
-            )
-            .withFaceLandmarks()
-            .withFaceDescriptor();
+            const detection = await faceapi.detectSingleFace(element, ssdOptions)
+                                           .withFaceLandmarks()
+                                           .withFaceDescriptor();
 
             return detection;
         }
 
         async function registerFace() {
             if (!currentUser || isProcessing) return;
+            if (!modelsReady) {
+                updateStatus("Models initializing. Please wait...", "status-warning");
+                return;
+            }
+
             isProcessing = true;
             btnReg.disabled = true;
 
             try {
-                updateStatus("Extracting spatial descriptors...", "status-idle");
+                updateStatus("Extracting face features...", "status-idle");
                 const detection = await getFaceDescriptor();
 
                 if (!detection) {
@@ -576,7 +597,10 @@
                 }
 
                 const studentName = prompt("Enter Student Name:");
-                if (!studentName || !studentName.trim()) return;
+                if (!studentName || !studentName.trim()) {
+                    updateStatus("Registration cancelled.", "status-idle");
+                    return;
+                }
 
                 const descriptorArray = Array.from(detection.descriptor);
 
@@ -606,12 +630,17 @@
                 updateStatus("No registered faces found in Cloud DB.", "status-warning");
                 return;
             }
+            if (!modelsReady) {
+                updateStatus("Models initializing. Please wait...", "status-warning");
+                return;
+            }
             if (isProcessing) return;
+
             isProcessing = true;
             btnScan.disabled = true;
 
             try {
-                updateStatus("Analyzing face patterns...", "status-idle");
+                updateStatus("Analyzing face match...", "status-idle");
                 const detection = await getFaceDescriptor();
 
                 if (!detection) {
@@ -622,20 +651,22 @@
                 let bestMatch = null;
                 let lowestDistance = 1.0;
 
-                registeredStudents.forEach(student => {
+                // High-efficiency distance comparison loop
+                for (let i = 0; i < registeredStudents.length; i++) {
+                    const student = registeredStudents[i];
                     const distance = faceapi.euclideanDistance(detection.descriptor, student.descriptor);
                     if (distance < lowestDistance) {
                         lowestDistance = distance;
                         bestMatch = student;
                     }
-                });
+                }
 
                 if (lowestDistance <= 0.48) {
                     const confidence = Math.round((1 - lowestDistance) * 100);
-                    updateStatus(`Identified: ${bestMatch.name} (${confidence}% Accuracy)`, "status-success");
+                    updateStatus(`Identified: ${bestMatch.name} (${confidence}% Match)`, "status-success");
                     await saveAttendanceLog(bestMatch.name, `${confidence}%`, 'Present', 'badge-present');
                 } else {
-                    updateStatus("Face not recognized. Pattern threshold not met.", "status-danger");
+                    updateStatus("Face not recognized. Threshold not met.", "status-danger");
                     await saveAttendanceLog('Unknown', 'N/A', 'Rejected', 'badge-unknown');
                 }
             } catch (err) {
@@ -682,7 +713,7 @@
                     } 
                 });
                 video.srcObject = stream;
-                updateStatus("Camera active. Ready for facial recognition.", "status-idle");
+                updateStatus("Camera active. Ready for scanning.", "status-idle");
                 
                 btnStart.disabled = true;
                 btnScan.disabled = false;
