@@ -129,7 +129,7 @@
             <div class="user-box">
                 <img id="user-photo" class="user-avatar" src="" alt="User Avatar">
                 <span id="user-email" style="font-size: 13px; font-weight: 600; color: var(--text-main);">Not Signed In</span>
-                <button class="btn-secondary" onclick="openManageModal()">Manage Faces</button>
+                <button class="btn-secondary" onclick="openManageModal()">Manage Data</button>
                 <button class="btn-danger-sm" onclick="signOut()">Sign Out</button>
             </div>
         </div>
@@ -185,7 +185,7 @@
     <div id="manage-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modal-title">Registered Profiles</h3>
+                <h3 id="modal-title">Manage Data</h3>
                 <button class="btn-close" onclick="closeManageModal()">&times;</button>
             </div>
             
@@ -405,7 +405,7 @@
             await loadStudentsFromDatabase();
             
             const totalCount = registeredStudents.length;
-            modalTitle.textContent = `Registered Profiles (${totalCount})`;
+            modalTitle.textContent = `Manage Data (${totalCount} Profiles)`;
             
             manageStudentsTable.innerHTML = "";
             
