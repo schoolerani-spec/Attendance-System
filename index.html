@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Attendance System (Worker Fixed)</title>
+    <title>AI Attendance System</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
 
     <style>
         :root {
@@ -144,7 +145,7 @@
                 
                 <div class="controls-wrapper">
                     <button id="btn-fast-init" class="btn-init-fast" onclick="initializeFastModels()">
-                        ⚡ Initialize AI Engine (Worker Mode)
+                        ⚡ Initialize AI Engine
                     </button>
 
                     <div id="controls-grid" class="controls">
@@ -215,121 +216,6 @@
         </div>
     </div>
 
-    <canvas id="offscreen-canvas" style="display: none;"></canvas>
-
-    <script id="worker-script" type="text/javascript-worker">
-        // Inject Worker Global Compatibility Layer to satisfy face-api.js
-        self.window = self;
-        self.HTMLImageElement = class {};
-        self.HTMLCanvasElement = class {};
-        self.HTMLVideoElement = class {};
-        self.document = {
-            createElement: (type) => {
-                if (type === 'canvas') {
-                    return typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(300, 150) : {};
-                }
-                return {};
-            }
-        };
-
-        importScripts('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js');
-        importScripts('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js');
-
-        let MODEL_URL = 'https://vladmandic.github.io/face-api/model';
-        let faceDetectorOptions;
-        let isReady = false;
-
-        self.onmessage = async (e) => {
-            const { type, payload } = e.data;
-
-            if (type === 'INIT') {
-                try {
-                    await Promise.all([
-                        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-                        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-                    ]);
-                    faceDetectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
-                    isReady = true;
-                    self.postMessage({ type: 'INIT_COMPLETE' });
-                } catch (err) {
-                    self.postMessage({ type: 'ERROR', error: err.message });
-                }
-            }
-
-            if (type === 'EXTRACT_DESCRIPTOR') {
-                if (!isReady) return;
-                try {
-                    const { imageData } = payload;
-                    const canvas = new OffscreenCanvas(imageData.width, imageData.height);
-                    const ctx = canvas.getContext('2d');
-                    ctx.putImageData(imageData, 0, 0);
-
-                    const detection = await faceapi.detectSingleFace(canvas, faceDetectorOptions)
-                                                   .withFaceLandmarks()
-                                                   .withFaceDescriptor();
-
-                    if (!detection) {
-                        self.postMessage({ type: 'DESCRIPTOR_RESULT', success: false, reason: 'NO_FACE' });
-                    } else {
-                        self.postMessage({ 
-                            type: 'DESCRIPTOR_RESULT', 
-                            success: true, 
-                            descriptor: Array.from(detection.descriptor) 
-                        });
-                    }
-                } catch (err) {
-                    self.postMessage({ type: 'ERROR', error: err.message });
-                }
-            }
-
-            if (type === 'MATCH_FACE') {
-                if (!isReady) return;
-                try {
-                    const { imageData, registeredStudents } = payload;
-                    const canvas = new OffscreenCanvas(imageData.width, imageData.height);
-                    const ctx = canvas.getContext('2d');
-                    ctx.putImageData(imageData, 0, 0);
-
-                    const detection = await faceapi.detectSingleFace(canvas, faceDetectorOptions)
-                                                   .withFaceLandmarks()
-                                                   .withFaceDescriptor();
-
-                    if (!detection) {
-                        self.postMessage({ type: 'MATCH_RESULT', success: false, reason: 'NO_FACE' });
-                        return;
-                    }
-
-                    const currentDescriptor = detection.descriptor;
-                    let bestMatch = null;
-                    let lowestDistance = 1.0;
-
-                    registeredStudents.forEach(student => {
-                        let distance = 0;
-                        for (let i = 0; i < 128; i++) {
-                            const diff = currentDescriptor[i] - student.descriptor[i];
-                            distance += diff * diff;
-                        }
-                        distance = Math.sqrt(distance);
-
-                        if (distance < lowestDistance) {
-                            lowestDistance = distance;
-                            bestMatch = student;
-                        }
-                    });
-
-                    if (lowestDistance <= 0.52) {
-                        self.postMessage({ type: 'MATCH_RESULT', success: true, isMatch: true, name: bestMatch.name, distance: lowestDistance });
-                    } else {
-                        self.postMessage({ type: 'MATCH_RESULT', success: true, isMatch: false, distance: lowestDistance });
-                    }
-                } catch (err) {
-                    self.postMessage({ type: 'ERROR', error: err.message });
-                }
-            }
-        };
-    </script>
-
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyACT1695I7JVKCh5zOTYKK9tLrW3XCNLEU",
@@ -356,8 +242,6 @@
         const logTable = document.getElementById('log-table-body');
         const userEmail = document.getElementById('user-email');
         const userPhoto = document.getElementById('user-photo');
-        const offscreenCanvas = document.getElementById('offscreen-canvas');
-        const ctx = offscreenCanvas.getContext('2d');
         
         const btnFastInit = document.getElementById('btn-fast-init');
         const controlsGrid = document.getElementById('controls-grid');
@@ -371,83 +255,71 @@
         let registeredStudents = [];
         let unsubscribeLogs = null;
         let isProcessing = false;
-        let worker = null;
-        let workerResolve = null;
+        let faceDetectorOptions = null;
+        let MODEL_URL = 'https://vladmandic.github.io/face-api/model';
 
-        function initWorker() {
-            const blob = new Blob([document.getElementById('worker-script').textContent], { type: 'text/javascript' });
-            worker = new Worker(URL.createObjectURL(blob));
-
-            worker.onmessage = (e) => {
-                const { type, success, descriptor, isMatch, name, reason, error } = e.data;
-
-                if (type === 'INIT_COMPLETE') {
-                    btnFastInit.style.display = 'none';
-                    controlsGrid.style.display = 'grid';
-                    updateStatus("AI Engine initialized in Web Worker.", "status-idle");
-                } else if (type === 'DESCRIPTOR_RESULT') {
-                    if (workerResolve) workerResolve({ success, descriptor, reason });
-                } else if (type === 'MATCH_RESULT') {
-                    if (workerResolve) workerResolve({ success, isMatch, name, reason });
-                } else if (type === 'ERROR') {
-                    updateStatus(`Worker Error: ${error}`, "status-danger");
-                    if (workerResolve) workerResolve({ success: false });
-                }
-            };
-        }
-
-        function initializeFastModels() {
+        async function initializeFastModels() {
             btnFastInit.disabled = true;
-            btnFastInit.textContent = "⌛ Spawning Background Worker...";
-            initWorker();
-            worker.postMessage({ type: 'INIT' });
-        }
+            btnFastInit.textContent = "⌛ Loading AI Models...";
+            updateStatus("Downloading neural network models...", "status-idle");
 
-        function captureImageData() {
-            offscreenCanvas.width = video.videoWidth || 320;
-            offscreenCanvas.height = video.videoHeight || 240;
-            ctx.drawImage(video, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
-            return ctx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+            try {
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                ]);
+                
+                faceDetectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+                btnFastInit.style.display = 'none';
+                controlsGrid.style.display = 'grid';
+                updateStatus("AI Engine ready! Start camera to proceed.", "status-idle");
+            } catch (err) {
+                updateStatus("Failed to load AI models.", "status-danger");
+                btnFastInit.disabled = false;
+                btnFastInit.textContent = "⚡ Initialize AI Engine";
+            }
         }
 
         async function registerFace() {
             if (!currentUser || isProcessing) return;
+            if (!video.srcObject || video.paused) {
+                updateStatus("Please start the camera first.", "status-warning");
+                return;
+            }
+
             isProcessing = true;
             btnReg.disabled = true;
-            updateStatus("Capturing & analyzing face in worker...", "status-idle");
-
-            const imageData = captureImageData();
-            
-            const result = await new Promise((resolve) => {
-                workerResolve = resolve;
-                worker.postMessage({ type: 'EXTRACT_DESCRIPTOR', payload: { imageData } });
-            });
-
-            if (!result.success) {
-                updateStatus("No face detected. Adjust position.", "status-warning");
-                isProcessing = false;
-                btnReg.disabled = false;
-                return;
-            }
-
-            const studentName = prompt("Enter Person's Name:");
-            if (!studentName || !studentName.trim()) {
-                updateStatus("Cancelled.", "status-idle");
-                isProcessing = false;
-                btnReg.disabled = false;
-                return;
-            }
+            updateStatus("Scanning face...", "status-idle");
 
             try {
+                const detection = await faceapi.detectSingleFace(video, faceDetectorOptions)
+                                               .withFaceLandmarks()
+                                               .withFaceDescriptor();
+
+                if (!detection) {
+                    updateStatus("No face detected. Adjust lighting and look directly at camera.", "status-warning");
+                    return;
+                }
+
+                const studentName = prompt("Enter Person's Name:");
+                if (!studentName || !studentName.trim()) {
+                    updateStatus("Registration cancelled.", "status-idle");
+                    return;
+                }
+
+                const descriptorArray = Array.from(detection.descriptor);
                 await db.collection("users").doc(currentUser.uid).collection("students").add({
                     name: studentName.trim(),
-                    descriptor: result.descriptor,
+                    descriptor: descriptorArray,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
+
                 await loadStudentsFromDatabase();
-                updateStatus(`Saved "${studentName}"!`, "status-success");
+                updateStatus(`Successfully registered "${studentName}"!`, "status-success");
             } catch (err) {
-                updateStatus("Database write failed.", "status-danger");
+                console.error(err);
+                updateStatus("Failed to save face vector.", "status-danger");
             } finally {
                 isProcessing = false;
                 btnReg.disabled = false;
@@ -456,37 +328,61 @@
 
         async function scanFace() {
             if (registeredStudents.length === 0) {
-                updateStatus("No registered profiles.", "status-warning");
+                updateStatus("No registered profiles found. Register a face first.", "status-warning");
+                return;
+            }
+            if (!video.srcObject || video.paused) {
+                updateStatus("Please start the camera first.", "status-warning");
                 return;
             }
             if (isProcessing) return;
 
             isProcessing = true;
             btnScan.disabled = true;
-            updateStatus("Worker matching vector...", "status-idle");
+            updateStatus("Matching face...", "status-idle");
 
-            const imageData = captureImageData();
+            try {
+                const detection = await faceapi.detectSingleFace(video, faceDetectorOptions)
+                                               .withFaceLandmarks()
+                                               .withFaceDescriptor();
 
-            const result = await new Promise((resolve) => {
-                workerResolve = resolve;
-                worker.postMessage({ 
-                    type: 'MATCH_FACE', 
-                    payload: { imageData, registeredStudents } 
+                if (!detection) {
+                    updateStatus("No face detected in camera view.", "status-warning");
+                    return;
+                }
+
+                const currentDescriptor = detection.descriptor;
+                let bestMatch = null;
+                let lowestDistance = 1.0;
+
+                registeredStudents.forEach(student => {
+                    let distance = 0;
+                    for (let i = 0; i < 128; i++) {
+                        const diff = currentDescriptor[i] - student.descriptor[i];
+                        distance += diff * diff;
+                    }
+                    distance = Math.sqrt(distance);
+
+                    if (distance < lowestDistance) {
+                        lowestDistance = distance;
+                        bestMatch = student;
+                    }
                 });
-            });
 
-            if (!result.success && result.reason === 'NO_FACE') {
-                updateStatus("No face detected.", "status-warning");
-            } else if (result.isMatch) {
-                updateStatus(`Matched: ${result.name}`, "status-success");
-                await saveAttendanceLog(result.name, 'Present', 'badge-present');
-            } else {
-                updateStatus("Unknown Face", "status-danger");
-                await saveAttendanceLog('Unknown', 'Rejected', 'badge-unknown');
+                if (lowestDistance <= 0.52) {
+                    updateStatus(`Match found: ${bestMatch.name}`, "status-success");
+                    await saveAttendanceLog(bestMatch.name, 'Present', 'badge-present');
+                } else {
+                    updateStatus("Face not recognized.", "status-danger");
+                    await saveAttendanceLog('Unknown', 'Rejected', 'badge-unknown');
+                }
+            } catch (err) {
+                console.error(err);
+                updateStatus("Error processing scan.", "status-danger");
+            } finally {
+                isProcessing = false;
+                btnScan.disabled = false;
             }
-
-            isProcessing = false;
-            btnScan.disabled = false;
         }
 
         async function handleGoogleAuth() {
@@ -533,13 +429,9 @@
             auth.signOut();
             currentUser = null;
             stopCamera();
-            if (worker) {
-                worker.terminate();
-                worker = null;
-            }
             btnFastInit.style.display = 'flex';
             btnFastInit.disabled = false;
-            btnFastInit.textContent = "⚡ Initialize AI Engine (Worker Mode)";
+            btnFastInit.textContent = "⚡ Initialize AI Engine";
             controlsGrid.style.display = 'none';
             updateStatus("Initialize AI Engine to start scanning.", "status-idle");
             dashboard.style.display = 'none';
