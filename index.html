@@ -169,7 +169,6 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Date</th>
                                 <th>Name</th>
                                 <th>Time</th>
                                 <th>Status</th>
@@ -498,7 +497,7 @@
                           lastSeenDate = dateStr;
                       }
 
-                      renderLogEntry(dateStr, log.name, log.time, log.statusText, log.badgeClass);
+                      renderLogEntry(log.name, log.time, log.statusText, log.badgeClass);
                   });
               });
         }
@@ -506,17 +505,16 @@
         function renderDateDividerRow(dateStr) {
             const dividerRow = document.createElement('tr');
             dividerRow.innerHTML = `
-                <td colspan="4" style="background-color: #f1f5f9; font-weight: 700; color: #0f172a; font-size: 13px; padding: 10px 12px; border-top: 2px solid var(--border-color); border-bottom: 2px solid var(--border-color);">
+                <td colspan="3" style="background-color: #f1f5f9; font-weight: 700; color: #0f172a; font-size: 13px; padding: 10px 12px; border-top: 2px solid var(--border-color); border-bottom: 2px solid var(--border-color);">
                     📅 ${dateStr}
                 </td>
             `;
             logTable.appendChild(dividerRow);
         }
 
-        function renderLogEntry(dateStr, name, timeStr, statusText, badgeClass) {
+        function renderLogEntry(name, timeStr, statusText, badgeClass) {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td style="color: var(--text-muted);">-</td>
                 <td><strong>${name}</strong></td>
                 <td>${timeStr}</td>
                 <td><span class="badge ${badgeClass}">${statusText}</span></td>
