@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Attendance System</title>
+    <title>AI Attendance System (Worker Mode)</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -145,7 +144,7 @@
                 
                 <div class="controls-wrapper">
                     <button id="btn-fast-init" class="btn-init-fast" onclick="initializeFastModels()">
-                        ⚡ Initialize AI Engine
+                        ⚡ Initialize AI Engine (Worker Mode)
                     </button>
 
                     <div id="controls-grid" class="controls">
@@ -170,6 +169,7 @@
                         <thead>
                             <tr>
                                 <th>Name</th>
+                                <th>Date</th>
                                 <th>Time</th>
                                 <th>Status</th>
                             </tr>
@@ -215,7 +215,97 @@
         </div>
     </div>
 
-    <canvas id="processing-canvas" style="display: none;"></canvas>
+    <canvas id="offscreen-canvas" style="display: none;"></canvas>
+
+    <script id="worker-script" type="text/javascript-worker">
+        importScripts('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js');
+
+        let MODEL_URL = 'https://vladmandic.github.io/face-api/model';
+        let faceDetectorOptions;
+        let isReady = false;
+
+        self.onmessage = async (e) => {
+            const { type, payload } = e.data;
+
+            if (type === 'INIT') {
+                try {
+                    await Promise.all([
+                        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                    ]);
+                    faceDetectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+                    isReady = true;
+                    self.postMessage({ type: 'INIT_COMPLETE' });
+                } catch (err) {
+                    self.postMessage({ type: 'ERROR', error: err.message });
+                }
+            }
+
+            if (type === 'EXTRACT_DESCRIPTOR') {
+                if (!isReady) return;
+                try {
+                    const { imageData } = payload;
+                    const detection = await faceapi.detectSingleFace(imageData, faceDetectorOptions)
+                                                   .withFaceLandmarks()
+                                                   .withFaceDescriptor();
+
+                    if (!detection) {
+                        self.postMessage({ type: 'DESCRIPTOR_RESULT', success: false, reason: 'NO_FACE' });
+                    } else {
+                        self.postMessage({ 
+                            type: 'DESCRIPTOR_RESULT', 
+                            success: true, 
+                            descriptor: Array.from(detection.descriptor) 
+                        });
+                    }
+                } catch (err) {
+                    self.postMessage({ type: 'ERROR', error: err.message });
+                }
+            }
+
+            if (type === 'MATCH_FACE') {
+                if (!isReady) return;
+                try {
+                    const { imageData, registeredStudents } = payload;
+                    const detection = await faceapi.detectSingleFace(imageData, faceDetectorOptions)
+                                                   .withFaceLandmarks()
+                                                   .withFaceDescriptor();
+
+                    if (!detection) {
+                        self.postMessage({ type: 'MATCH_RESULT', success: false, reason: 'NO_FACE' });
+                        return;
+                    }
+
+                    const currentDescriptor = detection.descriptor;
+                    let bestMatch = null;
+                    let lowestDistance = 1.0;
+
+                    registeredStudents.forEach(student => {
+                        let distance = 0;
+                        for (let i = 0; i < 128; i++) {
+                            const diff = currentDescriptor[i] - student.descriptor[i];
+                            distance += diff * diff;
+                        }
+                        distance = Math.sqrt(distance);
+
+                        if (distance < lowestDistance) {
+                            lowestDistance = distance;
+                            bestMatch = student;
+                        }
+                    });
+
+                    if (lowestDistance <= 0.52) {
+                        self.postMessage({ type: 'MATCH_RESULT', success: true, isMatch: true, name: bestMatch.name, distance: lowestDistance });
+                    } else {
+                        self.postMessage({ type: 'MATCH_RESULT', success: true, isMatch: false, distance: lowestDistance });
+                    }
+                } catch (err) {
+                    self.postMessage({ type: 'ERROR', error: err.message });
+                }
+            }
+        };
+    </script>
 
     <script>
         const firebaseConfig = {
@@ -243,7 +333,8 @@
         const logTable = document.getElementById('log-table-body');
         const userEmail = document.getElementById('user-email');
         const userPhoto = document.getElementById('user-photo');
-        const processingCanvas = document.getElementById('processing-canvas');
+        const offscreenCanvas = document.getElementById('offscreen-canvas');
+        const ctx = offscreenCanvas.getContext('2d');
         
         const btnFastInit = document.getElementById('btn-fast-init');
         const controlsGrid = document.getElementById('controls-grid');
@@ -257,35 +348,122 @@
         let registeredStudents = [];
         let unsubscribeLogs = null;
         let isProcessing = false;
-        let modelsReady = false;
-        
-        const MODEL_URL = 'https://vladmandic.github.io/face-api/model';
-        let faceDetectorOptions;
+        let worker = null;
+        let workerResolve = null;
 
-        async function initializeFastModels() {
+        function initWorker() {
+            const blob = new Blob([document.getElementById('worker-script').textContent], { type: 'text/javascript' });
+            worker = new Worker(URL.createObjectURL(blob));
+
+            worker.onmessage = (e) => {
+                const { type, success, descriptor, isMatch, name, reason, error } = e.data;
+
+                if (type === 'INIT_COMPLETE') {
+                    btnFastInit.style.display = 'none';
+                    controlsGrid.style.display = 'grid';
+                    updateStatus("AI Engine initialized in Web Worker.", "status-idle");
+                } else if (type === 'DESCRIPTOR_RESULT') {
+                    if (workerResolve) workerResolve({ success, descriptor, reason });
+                } else if (type === 'MATCH_RESULT') {
+                    if (workerResolve) workerResolve({ success, isMatch, name, reason });
+                } else if (type === 'ERROR') {
+                    updateStatus(`Worker Error: ${error}`, "status-danger");
+                    if (workerResolve) workerResolve({ success: false });
+                }
+            };
+        }
+
+        function initializeFastModels() {
             btnFastInit.disabled = true;
-            btnFastInit.textContent = "⌛ Loading Models...";
+            btnFastInit.textContent = "⌛ Spawning Background Worker...";
+            initWorker();
+            worker.postMessage({ type: 'INIT' });
+        }
+
+        function captureImageData() {
+            offscreenCanvas.width = video.videoWidth || 320;
+            offscreenCanvas.height = video.videoHeight || 240;
+            ctx.drawImage(video, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+            return ctx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        }
+
+        async function registerFace() {
+            if (!currentUser || isProcessing) return;
+            isProcessing = true;
+            btnReg.disabled = true;
+            updateStatus("Capturing & analyzing face in worker...", "status-idle");
+
+            const imageData = captureImageData();
+            
+            const result = await new Promise((resolve) => {
+                workerResolve = resolve;
+                worker.postMessage({ type: 'EXTRACT_DESCRIPTOR', payload: { imageData } });
+            });
+
+            if (!result.success) {
+                updateStatus("No face detected. Adjust position.", "status-warning");
+                isProcessing = false;
+                btnReg.disabled = false;
+                return;
+            }
+
+            const studentName = prompt("Enter Person's Name:");
+            if (!studentName || !studentName.trim()) {
+                updateStatus("Cancelled.", "status-idle");
+                isProcessing = false;
+                btnReg.disabled = false;
+                return;
+            }
 
             try {
-                await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-                ]);
-
-                faceDetectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
-
-                modelsReady = true;
-                updateStatus("Engine Ready. Click 'Start Camera'.", "status-idle");
-
-                btnFastInit.style.display = 'none';
-                controlsGrid.style.display = 'grid';
-
+                await db.collection("users").doc(currentUser.uid).collection("students").add({
+                    name: studentName.trim(),
+                    descriptor: result.descriptor,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                await loadStudentsFromDatabase();
+                updateStatus(`Saved "${studentName}"!`, "status-success");
             } catch (err) {
-                btnFastInit.disabled = false;
-                btnFastInit.textContent = "⚡ Initialize AI Engine";
-                updateStatus("Error loading models. Please retry.", "status-danger");
+                updateStatus("Database write failed.", "status-danger");
+            } finally {
+                isProcessing = false;
+                btnReg.disabled = false;
             }
+        }
+
+        async function scanFace() {
+            if (registeredStudents.length === 0) {
+                updateStatus("No registered profiles.", "status-warning");
+                return;
+            }
+            if (isProcessing) return;
+
+            isProcessing = true;
+            btnScan.disabled = true;
+            updateStatus("Worker matching vector...", "status-idle");
+
+            const imageData = captureImageData();
+
+            const result = await new Promise((resolve) => {
+                workerResolve = resolve;
+                worker.postMessage({ 
+                    type: 'MATCH_FACE', 
+                    payload: { imageData, registeredStudents } 
+                });
+            });
+
+            if (!result.success && result.reason === 'NO_FACE') {
+                updateStatus("No face detected.", "status-warning");
+            } else if (result.isMatch) {
+                updateStatus(`Matched: ${result.name}`, "status-success");
+                await saveAttendanceLog(result.name, 'Present', 'badge-present');
+            } else {
+                updateStatus("Unknown Face", "status-danger");
+                await saveAttendanceLog('Unknown', 'Rejected', 'badge-unknown');
+            }
+
+            isProcessing = false;
+            btnScan.disabled = false;
         }
 
         async function handleGoogleAuth() {
@@ -300,7 +478,6 @@
         async function handleAdminAuth() {
             const adminPassword = "krm#project";
             const input = prompt("Enter Admin Passcode:");
-
             if (input === adminPassword) {
                 try {
                     const result = await auth.signInAnonymously();
@@ -317,7 +494,6 @@
             currentUser = user;
             authScreen.style.display = 'none';
             dashboard.style.display = 'flex';
-
             userEmail.textContent = user.isAnonymous ? "Admin" : (user.displayName || user.email);
             if (user.photoURL && !user.isAnonymous) {
                 userPhoto.src = user.photoURL;
@@ -325,7 +501,6 @@
             } else {
                 userPhoto.style.display = 'none';
             }
-
             loadStudentsFromDatabase().catch(err => console.error(err));
             listenToAttendanceLogs();
         }
@@ -335,13 +510,14 @@
             auth.signOut();
             currentUser = null;
             stopCamera();
-
-            modelsReady = false;
+            if (worker) {
+                worker.terminate();
+                worker = null;
+            }
             btnFastInit.style.display = 'flex';
             btnFastInit.disabled = false;
-            btnFastInit.textContent = "⚡ Initialize AI Engine";
+            btnFastInit.textContent = "⚡ Initialize AI Engine (Worker Mode)";
             controlsGrid.style.display = 'none';
-
             updateStatus("Initialize AI Engine to start scanning.", "status-idle");
             dashboard.style.display = 'none';
             authScreen.style.display = 'flex';
@@ -363,11 +539,7 @@
                 registeredStudents = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    registeredStudents.push({
-                        id: doc.id,
-                        name: data.name,
-                        descriptor: new Float32Array(data.descriptor)
-                    });
+                    registeredStudents.push({ id: doc.id, name: data.name, descriptor: data.descriptor });
                 });
             } catch (err) {
                 console.error(err);
@@ -377,7 +549,6 @@
         function listenToAttendanceLogs() {
             if (!currentUser) return;
             if (unsubscribeLogs) unsubscribeLogs();
-
             unsubscribeLogs = db.collection("users")
               .doc(currentUser.uid)
               .collection("attendance_logs")
@@ -387,7 +558,8 @@
                   logTable.innerHTML = "";
                   snapshot.forEach(doc => {
                       const log = doc.data();
-                      renderLogEntry(log.name, log.time, log.statusText, log.badgeClass);
+                      const fallbackDate = new Date().toLocaleDateString();
+                      renderLogEntry(log.name, log.date || fallbackDate, log.time, log.statusText, log.badgeClass);
                   });
               });
         }
@@ -403,23 +575,16 @@
 
         async function refreshManageTable() {
             await loadStudentsFromDatabase();
-            
             const totalCount = registeredStudents.length;
             modalTitle.textContent = `Manage Data (${totalCount} Profiles)`;
-            
             manageStudentsTable.innerHTML = "";
-            
             if (totalCount === 0) {
-                manageStudentsTable.innerHTML = `<tr><td colspan="2" style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 15px;">No profiles found.</td></tr>`;
+                manageStudentsTable.innerHTML = `<tr><td colspan="2" style="text-align: center; color: var(--text-muted); padding: 15px;">No profiles found.</td></tr>`;
                 return;
             }
-
             registeredStudents.forEach(student => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${student.name}</strong></td>
-                    <td><button class="btn-delete" onclick="deleteStudent('${student.id}', '${student.name}')">Delete</button></td>
-                `;
+                tr.innerHTML = `<td><strong>${student.name}</strong></td><td><button class="btn-delete" onclick="deleteStudent('${student.id}', '${student.name}')">Delete</button></td>`;
                 manageStudentsTable.appendChild(tr);
             });
         }
@@ -463,101 +628,16 @@
             }
         }
 
-        async function getFaceDescriptor() {
-            if (!modelsReady) return null;
-            return await faceapi.detectSingleFace(video, faceDetectorOptions)
-                                .withFaceLandmarks()
-                                .withFaceDescriptor();
-        }
-
-        async function registerFace() {
-            if (!currentUser || isProcessing) return;
-            isProcessing = true;
-            btnReg.disabled = true;
-
-            try {
-                updateStatus("Analyzing face...", "status-idle");
-                const detection = await getFaceDescriptor();
-
-                if (!detection) {
-                    updateStatus("Face not detected. Try moving closer.", "status-warning");
-                    return;
-                }
-
-                const studentName = prompt("Enter Person's Name:");
-                if (!studentName || !studentName.trim()) {
-                    updateStatus("Cancelled.", "status-idle");
-                    return;
-                }
-
-                await db.collection("users").doc(currentUser.uid).collection("students").add({
-                    name: studentName.trim(),
-                    descriptor: Array.from(detection.descriptor),
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                await loadStudentsFromDatabase();
-                updateStatus(`Saved "${studentName}" successfully!`, "status-success");
-            } catch (err) {
-                updateStatus("Failed to register face.", "status-danger");
-            } finally {
-                isProcessing = false;
-                btnReg.disabled = false;
-            }
-        }
-
-        async function scanFace() {
-            if (registeredStudents.length === 0) {
-                updateStatus("No registered faces found.", "status-warning");
-                return;
-            }
-            if (isProcessing) return;
-
-            isProcessing = true;
-            btnScan.disabled = true;
-
-            try {
-                updateStatus("Scanning face...", "status-idle");
-                const detection = await getFaceDescriptor();
-
-                if (!detection) {
-                    updateStatus("No face detected.", "status-warning");
-                    return;
-                }
-
-                let bestMatch = null;
-                let lowestDistance = 1.0;
-
-                for (let i = 0; i < registeredStudents.length; i++) {
-                    const student = registeredStudents[i];
-                    const distance = faceapi.euclideanDistance(detection.descriptor, student.descriptor);
-                    if (distance < lowestDistance) {
-                        lowestDistance = distance;
-                        bestMatch = student;
-                    }
-                }
-
-                if (lowestDistance <= 0.52) {
-                    updateStatus(`Matched: ${bestMatch.name}`, "status-success");
-                    await saveAttendanceLog(bestMatch.name, 'Present', 'badge-present');
-                } else {
-                    updateStatus("Unknown Face", "status-danger");
-                    await saveAttendanceLog('Unknown', 'Rejected', 'badge-unknown');
-                }
-            } catch (err) {
-                updateStatus("Scan error.", "status-danger");
-            } finally {
-                isProcessing = false;
-                btnScan.disabled = false;
-            }
-        }
-
         async function saveAttendanceLog(name, statusText, badgeClass) {
             if (!currentUser) return;
             const now = new Date();
+            const dateStr = now.toLocaleDateString();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
             await db.collection("users").doc(currentUser.uid).collection("attendance_logs").add({
                 name,
-                time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                date: dateStr,
+                time: timeStr,
                 statusText,
                 badgeClass,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -569,7 +649,6 @@
                 stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 video.srcObject = stream;
                 updateStatus("Camera active.", "status-idle");
-                
                 btnStart.disabled = true;
                 btnScan.disabled = false;
                 btnReg.disabled = false;
@@ -595,10 +674,11 @@
             statusMessage.className = `status-box ${className}`;
         }
 
-        function renderLogEntry(name, timeStr, statusText, badgeClass) {
+        function renderLogEntry(name, dateStr, timeStr, statusText, badgeClass) {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td><strong>${name}</strong></td>
+                <td>${dateStr}</td>
                 <td>${timeStr}</td>
                 <td><span class="badge ${badgeClass}">${statusText}</span></td>
             `;
