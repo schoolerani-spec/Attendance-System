@@ -88,17 +88,7 @@
         td { border-bottom: 1px solid var(--border-color); color: var(--text-main); text-align: left; padding: 10px 12px; font-size: 13px; }
         tbody tr:hover td { background: #f8fafc; }
 
-        .sub-header-cell {
-            background: #f8fafc;
-            color: var(--text-muted);
-            font-weight: 700;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid var(--border-color);
-            padding: 8px 12px;
-        }
-
+        .sub-header-cell { background: #f8fafc; color: var(--text-muted); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding: 8px 12px; }
         .badge { padding: 4px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
         .badge-present { background: #d1fae5; color: #065f46; }
         .badge-unknown { background: #fee2e2; color: #991b1b; }
@@ -218,6 +208,44 @@
     </div>
 
     <script>
+        // Inline Web Worker for Offload Calculations (Distance & Confidence Thresholding)
+        const workerCode = `
+            self.onmessage = function(e) {
+                const { currentDescriptor, registeredStudents, distanceThreshold, minConfidence, detectionScore } = e.data;
+                
+                // Confidence Gate Check
+                if (detectionScore < minConfidence) {
+                    self.postMessage({ result: 'LOW_CONFIDENCE' });
+                    return;
+                }
+
+                let bestMatch = null;
+                let lowestDistance = 1.0;
+
+                registeredStudents.forEach(student => {
+                    let distance = 0;
+                    for (let i = 0; i < 128; i++) {
+                        const diff = currentDescriptor[i] - student.descriptor[i];
+                        distance += diff * diff;
+                    }
+                    distance = Math.sqrt(distance);
+
+                    if (distance < lowestDistance) {
+                        lowestDistance = distance;
+                        bestMatch = student;
+                    }
+                });
+
+                if (lowestDistance <= distanceThreshold) {
+                    self.postMessage({ result: 'MATCH', name: bestMatch.name, distance: lowestDistance });
+                } else {
+                    self.postMessage({ result: 'NO_MATCH', distance: lowestDistance });
+                }
+            };
+        `;
+        const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+        const inferenceWorker = new Worker(URL.createObjectURL(workerBlob));
+
         const firebaseConfig = {
             apiKey: "AIzaSyACT1695I7JVKCh5zOTYKK9tLrW3XCNLEU",
             authDomain: "attendance-app-d3fc2.firebaseapp.com",
@@ -259,6 +287,10 @@
         let faceDetectorOptions = null;
         let MODEL_URL = 'https://vladmandic.github.io/face-api/model';
 
+        // Precision & Accuracy Settings
+        const DISTANCE_THRESHOLD = 0.42;
+        const MIN_DETECTION_CONFIDENCE = 0.60;
+
         async function initializeFastModels() {
             btnFastInit.disabled = true;
             btnFastInit.textContent = "⌛ Loading AI Models...";
@@ -297,6 +329,38 @@
             }
         }
 
+        // Facial Alignment Pre-Processing: Rotate and align eyes horizontally
+        function getAlignedFaceCanvas(videoEl, landmarks) {
+            const leftEye = landmarks.getLeftEye();
+            const rightEye = landmarks.getRightEye();
+
+            const leftEyeCenter = {
+                x: leftEye.reduce((sum, p) => sum + p.x, 0) / leftEye.length,
+                y: leftEye.reduce((sum, p) => sum + p.y, 0) / leftEye.length
+            };
+            const rightEyeCenter = {
+                x: rightEye.reduce((sum, p) => sum + p.x, 0) / rightEye.length,
+                y: rightEye.reduce((sum, p) => sum + p.y, 0) / rightEye.length
+            };
+
+            const dx = rightEyeCenter.x - leftEyeCenter.x;
+            const dy = rightEyeCenter.y - leftEyeCenter.y;
+            const angle = Math.atan2(dy, dx);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = videoEl.videoWidth || 640;
+            canvas.height = videoEl.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(-angle);
+            ctx.drawImage(videoEl, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+            ctx.restore();
+
+            return canvas;
+        }
+
         async function registerFace() {
             if (!currentUser || isProcessing) return;
             if (!video.srcObject || video.paused) {
@@ -310,11 +374,21 @@
 
             try {
                 const detection = await faceapi.detectSingleFace(video, faceDetectorOptions)
-                                               .withFaceLandmarks()
-                                               .withFaceDescriptor();
+                                               .withFaceLandmarks();
 
-                if (!detection) {
-                    updateStatus("No face detected. Adjust lighting and look directly at camera.", "status-warning");
+                if (!detection || detection.score < MIN_DETECTION_CONFIDENCE) {
+                    updateStatus("Face confidence too low. Adjust lighting and face directly.", "status-warning");
+                    return;
+                }
+
+                // Pre-process Alignment
+                const alignedCanvas = getAlignedFaceCanvas(video, detection.landmarks);
+                const alignedDetection = await faceapi.detectSingleFace(alignedCanvas, faceDetectorOptions)
+                                                      .withFaceLandmarks()
+                                                      .withFaceDescriptor();
+
+                if (!alignedDetection) {
+                    updateStatus("Failed to process face alignment.", "status-warning");
                     return;
                 }
 
@@ -324,7 +398,7 @@
                     return;
                 }
 
-                const descriptorArray = Array.from(detection.descriptor);
+                const descriptorArray = Array.from(alignedDetection.descriptor);
                 await db.collection("users").doc(currentUser.uid).collection("students").add({
                     name: studentName.trim(),
                     descriptor: descriptorArray,
@@ -359,43 +433,50 @@
 
             try {
                 const detection = await faceapi.detectSingleFace(video, faceDetectorOptions)
-                                               .withFaceLandmarks()
-                                               .withFaceDescriptor();
+                                               .withFaceLandmarks();
 
                 if (!detection) {
                     updateStatus("No face detected in camera view.", "status-warning");
                     return;
                 }
 
-                const currentDescriptor = detection.descriptor;
-                let bestMatch = null;
-                let lowestDistance = 1.0;
+                // Pre-process Alignment
+                const alignedCanvas = getAlignedFaceCanvas(video, detection.landmarks);
+                const alignedDetection = await faceapi.detectSingleFace(alignedCanvas, faceDetectorOptions)
+                                                      .withFaceLandmarks()
+                                                      .withFaceDescriptor();
 
-                registeredStudents.forEach(student => {
-                    let distance = 0;
-                    for (let i = 0; i < 128; i++) {
-                        const diff = currentDescriptor[i] - student.descriptor[i];
-                        distance += diff * diff;
-                    }
-                    distance = Math.sqrt(distance);
+                const currentDescriptor = alignedDetection ? Array.from(alignedDetection.descriptor) : [];
 
-                    if (distance < lowestDistance) {
-                        lowestDistance = distance;
-                        bestMatch = student;
-                    }
+                // Offload Matching Inference to Web Worker
+                inferenceWorker.postMessage({
+                    currentDescriptor,
+                    registeredStudents,
+                    distanceThreshold: DISTANCE_THRESHOLD,
+                    minConfidence: MIN_DETECTION_CONFIDENCE,
+                    detectionScore: detection.score
                 });
 
-                if (lowestDistance <= 0.52) {
-                    updateStatus(`Match found: ${bestMatch.name}`, "status-success");
-                    await saveAttendanceLog(bestMatch.name, 'Present', 'badge-present');
-                } else {
-                    updateStatus("Face not recognized.", "status-danger");
-                    await saveAttendanceLog('Unknown', 'Rejected', 'badge-unknown');
-                }
+                inferenceWorker.onmessage = async function(e) {
+                    const { result, name } = e.data;
+
+                    if (result === 'LOW_CONFIDENCE') {
+                        updateStatus("Face detection score low. Hold still.", "status-warning");
+                    } else if (result === 'MATCH') {
+                        updateStatus(`Match found: ${name}`, "status-success");
+                        await saveAttendanceLog(name, 'Present', 'badge-present');
+                    } else {
+                        updateStatus("Face not recognized.", "status-danger");
+                        await saveAttendanceLog('Unknown', 'Rejected', 'badge-unknown');
+                    }
+
+                    isProcessing = false;
+                    btnScan.disabled = false;
+                };
+
             } catch (err) {
                 console.error(err);
                 updateStatus("Error processing scan.", "status-danger");
-            } finally {
                 isProcessing = false;
                 btnScan.disabled = false;
             }
@@ -505,7 +586,6 @@
         }
 
         function renderDateGroupHeader(dateStr) {
-            // 1. Date Header Row
             const dateRow = document.createElement('tr');
             dateRow.innerHTML = `
                 <td colspan="3" style="background-color: #e2e8f0; font-weight: 700; color: #0f172a; font-size: 13px; padding: 10px 12px; border-top: 2px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
@@ -514,7 +594,6 @@
             `;
             logTable.appendChild(dateRow);
 
-            // 2. Column Headers Row for this Specific Date
             const colHeaderRow = document.createElement('tr');
             colHeaderRow.innerHTML = `
                 <td class="sub-header-cell">NAME</td>
