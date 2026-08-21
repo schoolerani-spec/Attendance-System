@@ -169,8 +169,8 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Name</th>
                                 <th>Date</th>
+                                <th>Name</th>
                                 <th>Time</th>
                                 <th>Status</th>
                             </tr>
@@ -498,7 +498,7 @@
                           lastSeenDate = dateStr;
                       }
 
-                      renderLogEntry(log.name, log.time, log.statusText, log.badgeClass);
+                      renderLogEntry(dateStr, log.name, log.time, log.statusText, log.badgeClass);
                   });
               });
         }
@@ -513,11 +513,11 @@
             logTable.appendChild(dividerRow);
         }
 
-        function renderLogEntry(name, timeStr, statusText, badgeClass) {
+        function renderLogEntry(dateStr, name, timeStr, statusText, badgeClass) {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td style="padding-left: 20px;"><strong>${name}</strong></td>
                 <td style="color: var(--text-muted);">-</td>
+                <td><strong>${name}</strong></td>
                 <td>${timeStr}</td>
                 <td><span class="badge ${badgeClass}">${statusText}</span></td>
             `;
