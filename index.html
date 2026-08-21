@@ -85,10 +85,19 @@
 
         .table-container { flex: 1; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); min-height: 0; }
         table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        th, td { text-align: left; padding: 10px 12px; font-size: 13px; }
-        th { background: #f8fafc; color: var(--text-muted); font-weight: 700; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 10; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-        td { border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+        td { border-bottom: 1px solid var(--border-color); color: var(--text-main); text-align: left; padding: 10px 12px; font-size: 13px; }
         tbody tr:hover td { background: #f8fafc; }
+
+        .sub-header-cell {
+            background: #f8fafc;
+            color: var(--text-muted);
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 12px;
+        }
 
         .badge { padding: 4px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
         .badge-present { background: #d1fae5; color: #065f46; }
@@ -167,13 +176,6 @@
                 </div>
                 <div class="table-container">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Time</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
                         <tbody id="log-table-body">
                         </tbody>
                     </table>
@@ -194,8 +196,8 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Action</th>
+                                <td class="sub-header-cell">Name</td>
+                                <td class="sub-header-cell">Action</td>
                             </tr>
                         </thead>
                         <tbody id="manage-students-table">
@@ -493,7 +495,7 @@
                       const dateStr = log.date || new Date().toLocaleDateString();
 
                       if (dateStr !== lastSeenDate) {
-                          renderDateDividerRow(dateStr);
+                          renderDateGroupHeader(dateStr);
                           lastSeenDate = dateStr;
                       }
 
@@ -502,14 +504,24 @@
               });
         }
 
-        function renderDateDividerRow(dateStr) {
-            const dividerRow = document.createElement('tr');
-            dividerRow.innerHTML = `
-                <td colspan="3" style="background-color: #f1f5f9; font-weight: 700; color: #0f172a; font-size: 13px; padding: 10px 12px; border-top: 2px solid var(--border-color); border-bottom: 2px solid var(--border-color);">
+        function renderDateGroupHeader(dateStr) {
+            // 1. Date Header Row
+            const dateRow = document.createElement('tr');
+            dateRow.innerHTML = `
+                <td colspan="3" style="background-color: #e2e8f0; font-weight: 700; color: #0f172a; font-size: 13px; padding: 10px 12px; border-top: 2px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
                     📅 ${dateStr}
                 </td>
             `;
-            logTable.appendChild(dividerRow);
+            logTable.appendChild(dateRow);
+
+            // 2. Column Headers Row for this Specific Date
+            const colHeaderRow = document.createElement('tr');
+            colHeaderRow.innerHTML = `
+                <td class="sub-header-cell">NAME</td>
+                <td class="sub-header-cell">TIME</td>
+                <td class="sub-header-cell">STATUS</td>
+            `;
+            logTable.appendChild(colHeaderRow);
         }
 
         function renderLogEntry(name, timeStr, statusText, badgeClass) {
