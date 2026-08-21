@@ -301,7 +301,6 @@
         let isProcessing = false;
         let faceDetectorOptions = null;
         
-        // Dynamic Fallback Mirrors for CDN Reliability
         const MODEL_URLS = [
             'https://vladmandic.github.io/face-api/model',
             'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model'
@@ -310,7 +309,6 @@
         const sharedCanvas = document.createElement('canvas');
         const sharedCtx = sharedCanvas.getContext('2d', { willReadFrequently: true });
 
-        // Local Throttle Tracking to eliminate duplicate write costs
         const lastScanMap = new Map();
         const SCAN_THROTTLE_MS = 60000; 
 
@@ -336,7 +334,9 @@
             updateStatus("Configuring backend hardware acceleration...", "status-idle");
 
             try {
-                if (window.tf) {
+                const tf = faceapi.tf;
+
+                if (tf) {
                     if (tf.engine().registryFactory['webgpu']) {
                         await tf.setBackend('webgpu');
                     } else if (tf.engine().registryFactory['wasm']) {
@@ -356,18 +356,15 @@
                 sharedCanvas.height = 224;
                 sharedCtx.fillRect(0, 0, 224, 224);
 
-                // Safe Execution within TF scope to avoid WebGL memory leaks
-                await tf.tidy(async () => {
-                    await faceapi.detectSingleFace(sharedCanvas, faceDetectorOptions)
-                                   .withFaceLandmarks()
-                                   .withFaceDescriptor();
-                });
+                await faceapi.detectSingleFace(sharedCanvas, faceDetectorOptions)
+                               .withFaceLandmarks()
+                               .withFaceDescriptor();
 
                 btnFastInit.style.display = 'none';
                 controlsGrid.style.display = 'grid';
                 updateStatus("Hardware Engine active! Start camera to proceed.", "status-idle");
             } catch (err) {
-                console.error(err);
+                console.error("Initialization Error:", err);
                 updateStatus("Hardware setup error; falling back.", "status-danger");
                 btnFastInit.disabled = false;
                 btnFastInit.textContent = "⚡ Initialize AI Engine";
@@ -836,7 +833,6 @@
             });
         }
 
-        // Actionable Error Handling for Camera Hardware
         async function startCamera() {
             if (isStartingCamera) return;
             isStartingCamera = true;
