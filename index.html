@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Attendance System (Worker Mode)</title>
+    <title>AI Attendance System (Worker Fixed)</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -218,6 +218,21 @@
     <canvas id="offscreen-canvas" style="display: none;"></canvas>
 
     <script id="worker-script" type="text/javascript-worker">
+        // Inject Worker Global Compatibility Layer to satisfy face-api.js
+        self.window = self;
+        self.HTMLImageElement = class {};
+        self.HTMLCanvasElement = class {};
+        self.HTMLVideoElement = class {};
+        self.document = {
+            createElement: (type) => {
+                if (type === 'canvas') {
+                    return typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(300, 150) : {};
+                }
+                return {};
+            }
+        };
+
+        importScripts('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js');
         importScripts('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js');
 
         let MODEL_URL = 'https://vladmandic.github.io/face-api/model';
@@ -246,7 +261,11 @@
                 if (!isReady) return;
                 try {
                     const { imageData } = payload;
-                    const detection = await faceapi.detectSingleFace(imageData, faceDetectorOptions)
+                    const canvas = new OffscreenCanvas(imageData.width, imageData.height);
+                    const ctx = canvas.getContext('2d');
+                    ctx.putImageData(imageData, 0, 0);
+
+                    const detection = await faceapi.detectSingleFace(canvas, faceDetectorOptions)
                                                    .withFaceLandmarks()
                                                    .withFaceDescriptor();
 
@@ -268,7 +287,11 @@
                 if (!isReady) return;
                 try {
                     const { imageData, registeredStudents } = payload;
-                    const detection = await faceapi.detectSingleFace(imageData, faceDetectorOptions)
+                    const canvas = new OffscreenCanvas(imageData.width, imageData.height);
+                    const ctx = canvas.getContext('2d');
+                    ctx.putImageData(imageData, 0, 0);
+
+                    const detection = await faceapi.detectSingleFace(canvas, faceDetectorOptions)
                                                    .withFaceLandmarks()
                                                    .withFaceDescriptor();
 
