@@ -264,6 +264,7 @@
             updateStatus("Downloading neural network models...", "status-idle");
 
             try {
+                // Step 1: Download weight files
                 await Promise.all([
                     faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -271,10 +272,26 @@
                 ]);
                 
                 faceDetectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+
+                // Step 2: GPU Warm-Up Pass to compile WebGL shaders NOW rather than on first scan
+                btnFastInit.textContent = "⚙️ Warming up GPU Engine...";
+                updateStatus("Warming up GPU shaders...", "status-idle");
+                
+                const dummyCanvas = document.createElement('canvas');
+                dummyCanvas.width = 224;
+                dummyCanvas.height = 224;
+                const dummyCtx = dummyCanvas.getContext('2d');
+                dummyCtx.fillRect(0, 0, 224, 224);
+
+                await faceapi.detectSingleFace(dummyCanvas, faceDetectorOptions)
+                               .withFaceLandmarks()
+                               .withFaceDescriptor();
+
                 btnFastInit.style.display = 'none';
                 controlsGrid.style.display = 'grid';
                 updateStatus("AI Engine ready! Start camera to proceed.", "status-idle");
             } catch (err) {
+                console.error(err);
                 updateStatus("Failed to load AI models.", "status-danger");
                 btnFastInit.disabled = false;
                 btnFastInit.textContent = "⚡ Initialize AI Engine";
