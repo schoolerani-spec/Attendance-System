@@ -32,6 +32,8 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
         body { background-color: var(--bg-main); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         
+        .global-error-banner { display: none; background: #fee2e2; color: #991b1b; padding: 10px 16px; font-size: 13px; font-weight: 600; border-bottom: 1px solid #fca5a5; flex-shrink: 0; text-align: center; }
+
         .auth-screen { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; z-index: 2000; padding: 20px; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
         .auth-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 36px 28px; border-radius: var(--radius-lg); width: 100%; max-width: 400px; text-align: center; box-shadow: var(--shadow-lg); }
         .auth-card h1 { font-size: 24px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
@@ -109,6 +111,8 @@
     </style>
 </head>
 <body>
+
+    <div id="global-error" class="global-error-banner"></div>
 
     <div id="auth-screen" class="auth-screen">
         <div class="auth-card">
@@ -212,6 +216,28 @@
     </div>
 
     <script>
+        const globalErrorBanner = document.getElementById('global-error');
+
+        function throwRuntimeError(err, context = "System") {
+            console.error(`[${context} Error]:`, err);
+            const msg = err?.message || String(err);
+            if (globalErrorBanner) {
+                globalErrorBanner.textContent = `⚠️ Runtime Alert (${context}): ${msg}`;
+                globalErrorBanner.style.display = 'block';
+                setTimeout(() => { globalErrorBanner.style.display = 'none'; }, 8000);
+            }
+            updateStatus(`Error: ${msg}`, "status-danger");
+        }
+
+        window.onerror = function (msg, url, lineNo, columnNo, error) {
+            throwRuntimeError(error || msg, "Unhandled");
+            return false;
+        };
+
+        window.addEventListener('unhandledrejection', function (event) {
+            throwRuntimeError(event.reason, "Unhandled Promise");
+        });
+
         let idbDb = null;
         let idbInitPromise = null;
 
@@ -246,20 +272,21 @@
                     tx.onerror = () => reject(tx.error);
                 });
             } catch (err) {
-                console.warn("IDB Save Failed:", err);
+                throwRuntimeError(err, "IndexedDB Save");
             }
         }
 
         async function getStudentsFromIDB() {
             try {
                 const db = await ensureIDB();
-                return new Promise((resolve) => {
+                return new Promise((resolve, reject) => {
                     const tx = db.transaction('students', 'readonly');
                     const req = tx.objectStore('students').getAll();
                     req.onsuccess = () => resolve(req.result || []);
-                    req.onerror = () => resolve([]);
+                    req.onerror = () => reject(req.error);
                 });
             } catch (err) {
+                throwRuntimeError(err, "IndexedDB Fetch");
                 return [];
             }
         }
@@ -371,10 +398,9 @@
                 controlsGrid.style.display = 'grid';
                 updateStatus("Hardware Engine active! Start camera to proceed.", "status-idle");
             } catch (err) {
-                console.error("Initialization Error:", err);
-                updateStatus("Hardware setup error; falling back.", "status-danger");
                 btnFastInit.disabled = false;
                 btnFastInit.textContent = "⚡ Initialize AI Engine";
+                throwRuntimeError(err, "Model Init");
             } finally {
                 isInitializing = false;
             }
@@ -499,8 +525,7 @@
                 await loadStudentsFromDatabase();
                 updateStatus(`Registered successfully!`, "status-success");
             } catch (err) {
-                console.error(err);
-                updateStatus("Failed to store descriptor.", "status-danger");
+                throwRuntimeError(err, "Face Registration");
             } finally {
                 isProcessing = false;
                 btnReg.disabled = false;
@@ -559,6 +584,8 @@
                     }
                 });
 
+                const confidencePct = Math.min(100, Math.max(0, Math.round(highestSimilarity * 100)));
+
                 if (highestSimilarity >= cosThreshold) {
                     const now = Date.now();
                     const lastScan = lastScanMap.get(bestMatch.id) || 0;
@@ -569,15 +596,14 @@
                     }
 
                     lastScanMap.set(bestMatch.id, now);
-                    updateStatus(`Match found: ${bestMatch.name}`, "status-success");
-                    await saveAttendanceLog(bestMatch.name, 'Present', 'badge-present');
+                    updateStatus(`Match found: ${bestMatch.name} (${confidencePct}%)`, "status-success");
+                    await saveAttendanceLog(bestMatch.name, confidencePct, 'Present', 'badge-present');
                 } else {
                     updateStatus("Face profile not recognized.", "status-danger");
-                    await saveAttendanceLog('Unknown', 'Rejected', 'badge-unknown');
+                    await saveAttendanceLog('Unknown', confidencePct, 'Rejected', 'badge-unknown');
                 }
             } catch (err) {
-                console.error(err);
-                updateStatus("Error processing scan.", "status-danger");
+                throwRuntimeError(err, "Face Scan");
             } finally {
                 isProcessing = false;
                 btnScan.disabled = false;
@@ -589,7 +615,11 @@
                 const result = await auth.signInWithPopup(googleProvider);
                 if (result.user) showDashboard(result.user);
             } catch (error) {
-                auth.signInWithRedirect(googleProvider);
+                try {
+                    await auth.signInWithRedirect(googleProvider);
+                } catch (e) {
+                    throwRuntimeError(e, "Auth Redirect");
+                }
             }
         }
 
@@ -601,7 +631,7 @@
                     const result = await auth.signInAnonymously();
                     if (result.user) showDashboard(result.user);
                 } catch (error) {
-                    alert("Admin Sign-In Failed");
+                    throwRuntimeError(error, "Admin Login");
                 }
             } else if (input !== null) {
                 alert("Incorrect Passcode!");
@@ -619,7 +649,7 @@
             } else {
                 userPhoto.style.display = 'none';
             }
-            loadStudentsFromDatabase().catch(err => console.error(err));
+            loadStudentsFromDatabase().catch(err => throwRuntimeError(err, "DB Load"));
             listenToAttendanceLogs();
         }
 
@@ -629,7 +659,7 @@
                 unsubscribeLogs = null;
             }
             stopCamera();
-            auth.signOut();
+            auth.signOut().catch(err => throwRuntimeError(err, "Sign Out"));
             currentUser = null;
             btnFastInit.style.display = 'flex';
             btnFastInit.disabled = false;
@@ -671,7 +701,7 @@
                     saveStudentToIDB({ id: doc.id, name: data.name, descriptor: data.descriptor, vectorBuffer: vec });
                 });
             } catch (err) {
-                console.error(err);
+                throwRuntimeError(err, "Fetch Profiles");
             }
         }
 
@@ -687,28 +717,31 @@
               .collection("attendance_logs")
               .orderBy("timestamp", "desc")
               .limit(50)
-              .onSnapshot(snapshot => {
-                  logTable.innerHTML = "";
-                  let lastSeenDate = null;
+              .onSnapshot(
+                  snapshot => {
+                      logTable.innerHTML = "";
+                      let lastSeenDate = null;
 
-                  snapshot.forEach(doc => {
-                      const log = doc.data();
-                      const dateStr = log.date || new Date().toLocaleDateString();
+                      snapshot.forEach(doc => {
+                          const log = doc.data();
+                          const dateStr = log.date || new Date().toLocaleDateString();
 
-                      if (dateStr !== lastSeenDate) {
-                          renderDateGroupHeader(dateStr);
-                          lastSeenDate = dateStr;
-                      }
+                          if (dateStr !== lastSeenDate) {
+                              renderDateGroupHeader(dateStr);
+                              lastSeenDate = dateStr;
+                          }
 
-                      renderLogEntry(doc.id, log.name, log.time, log.statusText, log.badgeClass);
-                  });
-              });
+                          renderLogEntry(doc.id, log.name, log.confidence ?? 0, log.time, log.statusText, log.badgeClass);
+                      });
+                  },
+                  err => throwRuntimeError(err, "Firestore Stream")
+              );
         }
 
         function renderDateGroupHeader(dateStr) {
             const dateRow = document.createElement('tr');
             dateRow.innerHTML = `
-                <td colspan="3" style="background-color: #e2e8f0; font-weight: 700; color: #0f172a; font-size: 13px; padding: 10px 12px; border-top: 2px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+                <td colspan="4" style="background-color: #e2e8f0; font-weight: 700; color: #0f172a; font-size: 13px; padding: 10px 12px; border-top: 2px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
                 </td>
             `;
             dateRow.querySelector('td').textContent = `📅 ${dateStr}`;
@@ -717,19 +750,25 @@
             const colHeaderRow = document.createElement('tr');
             colHeaderRow.innerHTML = `
                 <td class="sub-header-cell">NAME</td>
+                <td class="sub-header-cell">CONFIDENCE</td>
                 <td class="sub-header-cell">TIME</td>
                 <td class="sub-header-cell">STATUS</td>
             `;
             logTable.appendChild(colHeaderRow);
         }
 
-        function renderLogEntry(docId, name, timeStr, statusText, badgeClass) {
+        function renderLogEntry(docId, name, confidence, timeStr, statusText, badgeClass) {
             const row = document.createElement('tr');
             
             const tdName = document.createElement('td');
             const strong = document.createElement('strong');
             strong.textContent = name;
             tdName.appendChild(strong);
+
+            const tdConf = document.createElement('td');
+            tdConf.textContent = `${confidence}%`;
+            tdConf.style.fontWeight = '600';
+            tdConf.style.color = confidence >= 80 ? 'var(--success)' : 'var(--danger)';
 
             const tdTime = document.createElement('td');
             tdTime.textContent = timeStr;
@@ -754,6 +793,7 @@
             tdStatus.appendChild(wrapper);
 
             row.appendChild(tdName);
+            row.appendChild(tdConf);
             row.appendChild(tdTime);
             row.appendChild(tdStatus);
             logTable.appendChild(row);
@@ -765,8 +805,7 @@
                 try {
                     await db.collection("users").doc(currentUser.uid).collection("attendance_logs").doc(logId).delete();
                 } catch (err) {
-                    console.error("Error deleting log:", err);
-                    alert("Failed to delete the log entry.");
+                    throwRuntimeError(err, "Delete Log");
                 }
             }
         }
@@ -781,34 +820,38 @@
         }
 
         async function refreshManageTable() {
-            await loadStudentsFromDatabase();
-            const totalCount = registeredStudents.length;
-            modalTitle.textContent = `Manage Data (${totalCount} Profiles)`;
-            manageStudentsTable.innerHTML = "";
-            
-            if (totalCount === 0) {
-                manageStudentsTable.innerHTML = `<tr><td colspan="2" style="text-align: center; color: var(--text-muted); padding: 15px;">No profiles found.</td></tr>`;
-                return;
+            try {
+                await loadStudentsFromDatabase();
+                const totalCount = registeredStudents.length;
+                modalTitle.textContent = `Manage Data (${totalCount} Profiles)`;
+                manageStudentsTable.innerHTML = "";
+                
+                if (totalCount === 0) {
+                    manageStudentsTable.innerHTML = `<tr><td colspan="2" style="text-align: center; color: var(--text-muted); padding: 15px;">No profiles found.</td></tr>`;
+                    return;
+                }
+
+                registeredStudents.forEach(student => {
+                    const tr = document.createElement('tr');
+                    const tdName = document.createElement('td');
+                    const strong = document.createElement('strong');
+                    strong.textContent = student.name;
+                    tdName.appendChild(strong);
+
+                    const tdAction = document.createElement('td');
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-delete';
+                    btn.textContent = 'Delete';
+                    btn.onclick = () => deleteStudent(student.id, student.name);
+                    tdAction.appendChild(btn);
+
+                    tr.appendChild(tdName);
+                    tr.appendChild(tdAction);
+                    manageStudentsTable.appendChild(tr);
+                });
+            } catch (err) {
+                throwRuntimeError(err, "Modal Refresh");
             }
-
-            registeredStudents.forEach(student => {
-                const tr = document.createElement('tr');
-                const tdName = document.createElement('td');
-                const strong = document.createElement('strong');
-                strong.textContent = student.name;
-                tdName.appendChild(strong);
-
-                const tdAction = document.createElement('td');
-                const btn = document.createElement('button');
-                btn.className = 'btn-delete';
-                btn.textContent = 'Delete';
-                btn.onclick = () => deleteStudent(student.id, student.name);
-                tdAction.appendChild(btn);
-
-                tr.appendChild(tdName);
-                tr.appendChild(tdAction);
-                manageStudentsTable.appendChild(tr);
-            });
         }
 
         async function deleteStudent(docId, name) {
@@ -821,7 +864,7 @@
                     tx.objectStore('students').delete(docId);
                     await refreshManageTable();
                 } catch (err) {
-                    alert("Error deleting student.");
+                    throwRuntimeError(err, "Delete Student");
                 }
             }
         }
@@ -829,48 +872,61 @@
         async function clearAttendanceLogs() {
             if (!currentUser) return;
             if (confirm("Delete all attendance logs?")) {
-                const snapshot = await db.collection("users").doc(currentUser.uid).collection("attendance_logs").get();
-                const batch = db.batch();
-                snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                await batch.commit();
+                try {
+                    const snapshot = await db.collection("users").doc(currentUser.uid).collection("attendance_logs").get();
+                    const batch = db.batch();
+                    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                } catch (err) {
+                    throwRuntimeError(err, "Clear Logs");
+                }
             }
         }
 
         async function clearAllData() {
             if (!currentUser) return;
             if (confirm("Permanently delete ALL registered profiles and logs?")) {
-                const sSnap = await db.collection("users").doc(currentUser.uid).collection("students").get();
-                const b1 = db.batch();
-                sSnap.docs.forEach(doc => b1.delete(doc.ref));
-                await b1.commit();
+                try {
+                    const sSnap = await db.collection("users").doc(currentUser.uid).collection("students").get();
+                    const b1 = db.batch();
+                    sSnap.docs.forEach(doc => b1.delete(doc.ref));
+                    await b1.commit();
 
-                const lSnap = await db.collection("users").doc(currentUser.uid).collection("attendance_logs").get();
-                const b2 = db.batch();
-                lSnap.docs.forEach(doc => b2.delete(doc.ref));
-                await b2.commit();
+                    const lSnap = await db.collection("users").doc(currentUser.uid).collection("attendance_logs").get();
+                    const b2 = db.batch();
+                    lSnap.docs.forEach(doc => b2.delete(doc.ref));
+                    await b2.commit();
 
-                const idb = await ensureIDB();
-                const tx = idb.transaction('students', 'readwrite');
-                tx.objectStore('students').clear();
+                    const idb = await ensureIDB();
+                    const tx = idb.transaction('students', 'readwrite');
+                    tx.objectStore('students').clear();
 
-                await refreshManageTable();
+                    await refreshManageTable();
+                } catch (err) {
+                    throwRuntimeError(err, "Clear All Data");
+                }
             }
         }
 
-        async function saveAttendanceLog(name, statusText, badgeClass) {
+        async function saveAttendanceLog(name, confidence, statusText, badgeClass) {
             if (!currentUser) return;
-            const now = new Date();
-            const dateStr = now.toLocaleDateString();
-            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            try {
+                const now = new Date();
+                const dateStr = now.toLocaleDateString();
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-            await db.collection("users").doc(currentUser.uid).collection("attendance_logs").add({
-                name,
-                date: dateStr,
-                time: timeStr,
-                statusText,
-                badgeClass,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
+                await db.collection("users").doc(currentUser.uid).collection("attendance_logs").add({
+                    name,
+                    confidence,
+                    date: dateStr,
+                    time: timeStr,
+                    statusText,
+                    badgeClass,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (err) {
+                throwRuntimeError(err, "Save Log");
+            }
         }
 
         async function startCamera() {
@@ -900,7 +956,7 @@
                 } else if (err.name === "NotReadableError") {
                     updateStatus("Camera in use by another app.", "status-danger");
                 } else {
-                    updateStatus("Camera access error.", "status-danger");
+                    throwRuntimeError(err, "Camera Access");
                 }
             } finally {
                 isStartingCamera = false;
