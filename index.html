@@ -85,13 +85,18 @@
 
         .table-container { flex: 1; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); min-height: 0; }
         table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        td { border-bottom: 1px solid var(--border-color); color: var(--text-main); text-align: left; padding: 10px 12px; font-size: 13px; }
+        td { border-bottom: 1px solid var(--border-color); color: var(--text-main); text-align: left; padding: 10px 12px; font-size: 13px; vertical-align: middle; }
         tbody tr:hover td { background: #f8fafc; }
 
         .sub-header-cell { background: #f8fafc; color: var(--text-muted); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding: 8px 12px; }
         .badge { padding: 4px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
         .badge-present { background: #d1fae5; color: #065f46; }
         .badge-unknown { background: #fee2e2; color: #991b1b; }
+
+        /* Delete Cross Button Style */
+        .status-cell-wrapper { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .btn-log-delete { background: transparent; border: none; color: #ef4444; font-size: 14px; font-weight: bold; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: background 0.2s; line-height: 1; }
+        .btn-log-delete:hover { background: #fee2e2; color: #dc2626; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: var(--card-bg); padding: 20px; border-radius: var(--radius-lg); width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--border-color); }
@@ -310,7 +315,7 @@
         const sharedCtx = sharedCanvas.getContext('2d', { willReadFrequently: true });
 
         const lastScanMap = new Map();
-        const SCAN_THROTTLE_MS = 0; // Set to 0 to disable scan cooldown entirely
+        const SCAN_THROTTLE_MS = 0; 
 
         async function loadModelsWithFallback() {
             for (const url of MODEL_URLS) {
@@ -685,7 +690,7 @@
                           lastSeenDate = dateStr;
                       }
 
-                      renderLogEntry(log.name, log.time, log.statusText, log.badgeClass);
+                      renderLogEntry(doc.id, log.name, log.time, log.statusText, log.badgeClass);
                   });
               });
         }
@@ -708,7 +713,7 @@
             logTable.appendChild(colHeaderRow);
         }
 
-        function renderLogEntry(name, timeStr, statusText, badgeClass) {
+        function renderLogEntry(docId, name, timeStr, statusText, badgeClass) {
             const row = document.createElement('tr');
             
             const tdName = document.createElement('td');
@@ -720,15 +725,40 @@
             tdTime.textContent = timeStr;
 
             const tdStatus = document.createElement('td');
+            
+            const wrapper = document.createElement('div');
+            wrapper.className = 'status-cell-wrapper';
+
             const span = document.createElement('span');
             span.className = `badge ${badgeClass}`;
             span.textContent = statusText;
-            tdStatus.appendChild(span);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-log-delete';
+            deleteBtn.innerHTML = '&#10005;'; // Red 'X' cross symbol
+            deleteBtn.title = 'Delete this log entry';
+            deleteBtn.onclick = () => deleteSingleLog(docId);
+
+            wrapper.appendChild(span);
+            wrapper.appendChild(deleteBtn);
+            tdStatus.appendChild(wrapper);
 
             row.appendChild(tdName);
             row.appendChild(tdTime);
             row.appendChild(tdStatus);
             logTable.appendChild(row);
+        }
+
+        async function deleteSingleLog(logId) {
+            if (!currentUser) return;
+            if (confirm("Delete this log entry?")) {
+                try {
+                    await db.collection("users").doc(currentUser.uid).collection("attendance_logs").doc(logId).delete();
+                } catch (err) {
+                    console.error("Error deleting log:", err);
+                    alert("Failed to delete the log entry.");
+                }
+            }
         }
 
         async function openManageModal() {
