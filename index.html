@@ -93,7 +93,6 @@
         .badge-present { background: #d1fae5; color: #065f46; }
         .badge-unknown { background: #fee2e2; color: #991b1b; }
 
-        /* Delete Cross Button Style */
         .status-cell-wrapper { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
         .btn-log-delete { background: transparent; border: none; color: #ef4444; font-size: 14px; font-weight: bold; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: background 0.2s; line-height: 1; }
         .btn-log-delete:hover { background: #fee2e2; color: #dc2626; }
@@ -300,6 +299,7 @@
         
         let stream = null;
         let isStartingCamera = false;
+        let isInitializing = false;
         let currentUser = null;
         let registeredStudents = [];
         let unsubscribeLogs = null;
@@ -334,6 +334,8 @@
         }
 
         async function initializeFastModels() {
+            if (isInitializing) return;
+            isInitializing = true;
             btnFastInit.disabled = true;
             btnFastInit.textContent = "⌛ Initializing Hardware Engine...";
             updateStatus("Configuring backend hardware acceleration...", "status-idle");
@@ -373,6 +375,8 @@
                 updateStatus("Hardware setup error; falling back.", "status-danger");
                 btnFastInit.disabled = false;
                 btnFastInit.textContent = "⚡ Initialize AI Engine";
+            } finally {
+                isInitializing = false;
             }
         }
 
@@ -620,10 +624,13 @@
         }
 
         function signOut() {
-            if (unsubscribeLogs) unsubscribeLogs();
+            if (unsubscribeLogs) {
+                unsubscribeLogs();
+                unsubscribeLogs = null;
+            }
+            stopCamera();
             auth.signOut();
             currentUser = null;
-            stopCamera();
             btnFastInit.style.display = 'flex';
             btnFastInit.disabled = false;
             btnFastInit.textContent = "⚡ Initialize AI Engine";
@@ -670,7 +677,10 @@
 
         function listenToAttendanceLogs() {
             if (!currentUser) return;
-            if (unsubscribeLogs) unsubscribeLogs();
+            if (unsubscribeLogs) {
+                unsubscribeLogs();
+                unsubscribeLogs = null;
+            }
             
             unsubscribeLogs = db.collection("users")
               .doc(currentUser.uid)
@@ -735,7 +745,7 @@
 
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'btn-log-delete';
-            deleteBtn.innerHTML = '&#10005;'; // Red 'X' cross symbol
+            deleteBtn.innerHTML = '&#10005;'; 
             deleteBtn.title = 'Delete this log entry';
             deleteBtn.onclick = () => deleteSingleLog(docId);
 
@@ -900,7 +910,10 @@
         function stopCamera() {
             isStartingCamera = false;
             if (stream) {
-                stream.getTracks().forEach(track => track.stop());
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                    stream.removeTrack(track);
+                });
                 video.srcObject = null;
                 stream = null;
             }
