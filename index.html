@@ -310,7 +310,7 @@
         const sharedCtx = sharedCanvas.getContext('2d', { willReadFrequently: true });
 
         const lastScanMap = new Map();
-        const SCAN_THROTTLE_MS = 60000; 
+        const SCAN_THROTTLE_MS = 0; // Set to 0 to disable scan cooldown entirely
 
         async function loadModelsWithFallback() {
             for (const url of MODEL_URLS) {
@@ -554,7 +554,7 @@
                     const now = Date.now();
                     const lastScan = lastScanMap.get(bestMatch.id) || 0;
 
-                    if (now - lastScan < SCAN_THROTTLE_MS) {
+                    if (SCAN_THROTTLE_MS > 0 && (now - lastScan < SCAN_THROTTLE_MS)) {
                         updateStatus(`Already logged: ${bestMatch.name} (Throttled)`, "status-warning");
                         return;
                     }
